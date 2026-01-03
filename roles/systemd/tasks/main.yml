@@ -1,51 +1,56 @@
 ---
-- name: Manage tailscale service
-  ansible.builtin.systemd:
-    name: "{{ tailscale_service_name }}"
-    state: "{{ tailscale_service_state }}"
+# Remove these two tasks - they have no tags so always run
+# - name: Manage tailscale service
+#   ansible.builtin.systemd:
+#     name: "{{ tailscale_service_name }}"
+#     state: "{{ tailscale_service_state }}"
 
+# Remove this too - no tags
+# - name: Manage traefik service
+#   ansible.builtin.systemd:
+#     name: "{{ traefik_service_name }}"
+#     state: "{{ traefik_service_state }}"
+#
 - name: Start tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: started
-  tags: [systemd, tailscale-start]
+  become: yes
+  tags: [tailscale-start]
 
 - name: Stop tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: stopped
+  become: yes
   ignore_errors: yes
-  tags: [systemd, tailscale-stop]
+  tags: [tailscale-stop]
 
 - name: Restart tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: restarted
-  tags: [systemd, tailscale-restart]
-
-- name: Manage tailscale service
-  ansible.builtin.systemd:
-    name: "{{ traefik_service_name }}"
-    state: "{{ traefik_service_state }}"
+  become: yes
+  tags: [tailscale-restart]
 
 - name: Start Traefik service
   ansible.builtin.systemd:
     name: traefik
     state: started
-  tags: [systemd, traefik, traefik-start]
+  become: yes
+  tags: [traefik-start]
 
 - name: Stop Traefik service
   ansible.builtin.systemd:
     name: traefik
     state: stopped
+  become: yes
   ignore_errors: yes
-  tags: [systemd, traefik, traefik-stop]
+  tags: [traefik-stop]
 
 - name: Restart Traefik service
   ansible.builtin.systemd:
     name: traefik
     state: restarted
-  tags: [systemd, traefik,traefik-restart]
-
-
-  ## Print out the result
+  become: yes
+  tags: [traefik-restart]
