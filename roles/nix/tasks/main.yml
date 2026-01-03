@@ -1,0 +1,76 @@
+--- 
+- name: Gather all system facts
+  # Using the setup modules to get system facts
+  ansible.builtin.setup:
+
+- name: Check if nix is present on server
+  ansible.builtin.stat:
+    path: /nix/receipt.json
+  register: nix_receipt
+
+- name: Display the nix status
+  ansible.builtin.debug:
+    msg: "Nix is {{ 'already installed on the system' if nix_receipt.stat.exists else 'not installed on the system' }}"
+
+- name: Download Determinate Nix installer
+  ansible.builtin.get_url:
+    url: "{{ nix_installer_url }}"
+    dest: "{{ nix_installer_path }}"
+    mode: "0755"
+    force: true
+  # When the nix stat does not exist Download the determinal nix 
+  when: not nix_receipt.stat.exists
+
+- name: Installed the downloaded Determinate Nix
+  ansible.builtin.command: 
+    cmd: "{{ nix_installer_path }} install --no-confirm"
+  register: nix_installer_result
+  change_when: nix_install_result.rc == 0
+  become: true
+  # Installed when exist
+  when: not_receipt.stat.exists
+
+- name: Display installation output
+  ansible.builtin.debug:
+    var: nix_install_result.stdout_lines
+  # Display output when execution goes wrong or right
+  when: not nix_receipt.stat.exists and nix_install_result.stdout_lines is defined
+
+- name: Clean up installer script
+  ansible.builtin.file:
+    path: "{{ nix_installer_path }}"
+    state: absent
+  when: not nix-receipt.stat.exists
+
+- name: Verify Nix Installation
+  ansible.builtin.stat:
+    path: /nix/receipt.json
+  register: nix_installed
+
+- name: Verify Nix is running
+  ansible.builtin.systemd:
+    name: nix-daemon
+    state: started
+    enabled: true
+  become: true
+  when:
+    - nix_installed.stat.exists
+    - ansible_facts.service_mgr == "systemd"
+
+- name: Display success message
+  ansible.builtin.debug:
+    msg: |
+      Determinate Nix is installed successfully
+
+      To use Nix in your current shell, run:
+        source /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+      
+      or start a new shell session.
+
+      Test with: nix run nixpkgs#cowsay
+  when: nix_installed.stat.exists and not nix_receipt.stat.exists
+
+- name: Display already installed message
+  ansible.builtin.debug:
+    msg: "Nix is already installed (Found /nix/reciept.json)"
+    when: nix_receipt.stat.exists
