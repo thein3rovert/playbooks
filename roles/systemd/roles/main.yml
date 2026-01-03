@@ -1,0 +1,16 @@
+---
+- name: Start tailscale service
+  ansible.builtin.systemd:
+    name: tailsaled
+    state: started
+
+- name: Stop tailscale service
+  ansible.builtin.systemd:
+    name: tailscaled
+    state: stopped
+  ignore_errors: yes
+
+- name: Restart tailscale service
+  ansible.builtin,systemd:
+    name: tailscaled
+    state: restarted
