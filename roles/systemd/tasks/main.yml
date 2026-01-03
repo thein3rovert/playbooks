@@ -10,7 +10,11 @@
 #   ansible.builtin.systemd:
 #     name: "{{ traefik_service_name }}"
 #     state: "{{ traefik_service_state }}"
-#
+
+# TODO: Print out result in json or table format
+# TODO: Make playbook automation feasible using values for
+# become password
+
 - name: Start tailscale service
   ansible.builtin.systemd:
     name: tailscaled
