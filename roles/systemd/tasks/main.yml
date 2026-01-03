@@ -6,7 +6,7 @@
 
 - name: Start tailscale service
   ansible.builtin.systemd:
-    name: tailsaled
+    name: tailscaled
     state: started
   tags: [systemd, tailscale-start]
 
@@ -18,10 +18,15 @@
   tags: [systemd, tailscale-stop]
 
 - name: Restart tailscale service
-  ansible.builtin,systemd:
+  ansible.builtin.systemd:
     name: tailscaled
     state: restarted
   tags: [systemd, tailscale-restart]
+
+- name: Manage tailscale service
+  ansible.builtin.systemd:
+    name: "{{ traefik_service_name }}"
+    state: "{{ traefik_service_state }}"
 
 - name: Start Traefik service
   ansible.builtin.systemd:
@@ -37,7 +42,7 @@
   tags: [systemd, traefik, traefik-stop]
 
 - name: Restart Traefik service
-  ansible.builtin,systemd:
+  ansible.builtin.systemd:
     name: traefik
     state: restarted
   tags: [systemd, traefik,traefik-restart]

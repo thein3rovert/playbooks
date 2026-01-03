@@ -1,3 +1,6 @@
 --- 
 tailscale_service_name: tailscaled
 tailscale_service_state: started
+
+traefik_service_name: traefik
+traefik_service_state: stopped
