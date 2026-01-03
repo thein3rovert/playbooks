@@ -10,7 +10,7 @@ list:
 
 # Run a specific role
 run role:
-    ansible-playbook site.yml --tags {{ role }} --ask-become-pass --ask-vault-pass
+    ansible-playbook site.yml --tags {{ role }} --ask-become-pass # --ask-vault-pass
 
 # Run all playbooks
 all:

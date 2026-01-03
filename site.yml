@@ -13,3 +13,7 @@
         name: nix
       tags: nix
 
+    - name: Run Systemd Role
+      ansible.builtin.import_role:
+        name: systemd
+      tags: systemd
