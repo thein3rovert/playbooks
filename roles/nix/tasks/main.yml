@@ -25,10 +25,10 @@
   ansible.builtin.command: 
     cmd: "{{ nix_installer_path }} install --no-confirm"
   register: nix_installer_result
-  change_when: nix_install_result.rc == 0
+  changed_when: nix_install_result.rc == 0
   become: true
   # Installed when exist
-  when: not_receipt.stat.exists
+  when: not nix_receipt.stat.exists
 
 - name: Display installation output
   ansible.builtin.debug:
