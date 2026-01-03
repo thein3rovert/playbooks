@@ -8,14 +8,17 @@
   ansible.builtin.systemd:
     name: tailsaled
     state: started
+  tags: [systemd, start]
 
 - name: Stop tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: stopped
   ignore_errors: yes
+  tags: [systemd, stop]
 
 - name: Restart tailscale service
   ansible.builtin,systemd:
     name: tailscaled
     state: restarted
+  tags: [systemd, restart]

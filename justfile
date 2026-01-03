@@ -12,6 +12,10 @@ list:
 run role:
     ansible-playbook site.yml --tags {{ role }} --ask-become-pass # --ask-vault-pass
 
+# Run a specific role with now tags
+run-all role sub_role:
+    ansible-playbook site.yml --tags {{ role }},{{ sub_role}} --ask-become-pass # --ask-vault-pass
+
 # Run all playbooks
 all:
     ansible-playbook site.yml --ask-become-pass --ask-vault-pass
