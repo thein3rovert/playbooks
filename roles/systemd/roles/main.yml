@@ -8,17 +8,39 @@
   ansible.builtin.systemd:
     name: tailsaled
     state: started
-  tags: [systemd, start]
+  tags: [systemd, tailscale-start]
 
 - name: Stop tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: stopped
   ignore_errors: yes
-  tags: [systemd, stop]
+  tags: [systemd, tailscale-stop]
 
 - name: Restart tailscale service
   ansible.builtin,systemd:
     name: tailscaled
     state: restarted
-  tags: [systemd, restart]
+  tags: [systemd, tailscale-restart]
+
+- name: Start Traefik service
+  ansible.builtin.systemd:
+    name: traefik
+    state: started
+  tags: [systemd, traefik, traefik-start]
+
+- name: Stop Traefik service
+  ansible.builtin.systemd:
+    name: traefik
+    state: stopped
+  ignore_errors: yes
+  tags: [systemd, traefik, traefik-stop]
+
+- name: Restart Traefik service
+  ansible.builtin,systemd:
+    name: traefik
+    state: restarted
+  tags: [systemd, traefik,traefik-restart]
+
+
+  ## Print out the result
