@@ -1,4 +1,9 @@
 ---
+- name: Manage tailscale service
+  ansible.builtin.systemd:
+    name: "{{ tailscale_service_name }}"
+    state: "{{ tailscale_service_state }}"
+
 - name: Start tailscale service
   ansible.builtin.systemd:
     name: tailsaled
