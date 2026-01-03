@@ -1,0 +1,15 @@
+---
+# Site-wide playbook - Run all configurations using roles
+# Usage: ansible-playbook site.yml --ask-become-pass --ask-vault-pass
+
+- name: Configure System
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  tasks:
+    - name: Run Nix Role
+      ansible.builtin.import_role:
+        name: nix
+      tags: nix
+
