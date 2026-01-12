@@ -1,0 +1,37 @@
+name: Auto Rebase on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'  # Triggers on tags like v1.0, v2.0, etc.
+
+jobs:
+  rebase-branches:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history and branches
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Rebase branches
+        run: |
+          # Get all remote branches except main
+          for branch in $(git branch -r | grep -v 'HEAD' | grep -v 'main' | sed 's/origin\///'); do
+            echo "Rebasing $branch..."
+            git checkout $branch
+            if git rebase origin/main; then
+              git push origin $branch --force-with-lease
+              echo "✓ Successfully rebased $branch"
+            else
+              echo "✗ Conflict in $branch - skipping"
+              git rebase --abort
+            fi
+          done
