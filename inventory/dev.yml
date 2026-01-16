@@ -1,0 +1,6 @@
+all:
+  children:
+    servers:
+      hosts:
+        ubuntu-ct-01:
+          ansible_host: ubuntu-srv-01
