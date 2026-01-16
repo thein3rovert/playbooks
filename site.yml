@@ -3,8 +3,8 @@
 # Usage: ansible-playbook site.yml --ask-become-pass --ask-vault-pass
 
 - name: Configure System
-  hosts: localhost
-  connection: local
+  hosts: ubuntu-srv-01
+  # connection: local
   gather_facts: true
 
   tasks:
