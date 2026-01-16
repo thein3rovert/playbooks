@@ -17,3 +17,8 @@
       ansible.builtin.import_role:
         name: systemd
       tags: systemd
+
+    - name: Run Tailscale role 
+      ansible.builtin.import_role:
+        name: tailscale
+      tags: tailscale
