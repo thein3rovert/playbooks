@@ -2,5 +2,5 @@ all:
   children:
     servers:
       hosts:
-        ubuntu-ct-01:
+        ubuntu-srv-01:
           ansible_host: ubuntu-srv-01
