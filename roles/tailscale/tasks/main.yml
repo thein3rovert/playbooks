@@ -33,19 +33,19 @@
 - name: Authenticate and COnfigure tailscale with auth key
   ansible.builtin.command:
     cmd: "tailscale up {{ tailscale_up_flags }} --authkey={{ tailscale_authkey }}"
-    when: 
-      - tailscale_status.rc != 0
-      - tailscale_authkey is defined
-    become: true
-    no_log: true
+  when: 
+    - tailscale_status.rc != 0
+    - tailscale_authkey is defined
+  become: true
+  no_log: true
 
 - name: Authenticate and COnfigure tailscale without auth key
   ansible.builtin.command:
     cmd: "tailscale up {{ tailscale_up_flags }}"
-    when: 
-      - tailscale_status.rc != 0
-      - tailscale_authkey is not defined
-    become: true
+  when: 
+    - tailscale_status.rc != 0
+    - tailscale_authkey is not defined
+  become: true
 
 - name: Capture tailscale status
   ansible.builtin.command:
