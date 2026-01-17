@@ -10,7 +10,7 @@ list:
 
 # Run a specific role
 run role:
-    ansible-playbook site.yml --tags {{ role }} --ask-become-pass # --ask-vault-pass
+    ansible-playbook site.yml --tags {{ role }} --ask-become-pass --ask-vault-pass
 
 # Run a specific role with now tags
 run-sub role:
@@ -22,7 +22,7 @@ all:
 
 # Check playbooks
 check:
-    ansible-playbook site.yml --check --syntax-check
+    ansible-playbook site.yml --check --syntax-check --ask-vault-pass
 
 # Manage vault
 vault:

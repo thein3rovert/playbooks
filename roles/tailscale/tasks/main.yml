@@ -58,10 +58,10 @@
 #     - tailscale_authkey is not defined
 #   become: true
 
-- name: Show tailscale login
-  ansible.builtin.debug:
-    var: tailscale_login
-
+# - name: Show tailscale login
+#   ansible.builtin.debug:
+#     var: tailscale_login
+#
 - name: Capture tailscale status
   ansible.builtin.command:
     cmd: "tailscale status"
