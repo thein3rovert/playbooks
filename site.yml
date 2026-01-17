@@ -24,3 +24,8 @@
       ansible.builtin.import_role:
         name: tailscale
       tags: tailscale
+ 
+    - name: Run User role 
+      ansible.builtin.import_role:
+        name: user
+      tags: user

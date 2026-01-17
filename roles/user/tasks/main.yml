@@ -4,10 +4,11 @@
   ansible.builtin.group:
     name: "{{ default_group }}"
     state: present
+  become: true
 
 - name: Ensure user 'thein3rovert' exist and is part of the 'users'
   ansible.builtin.user:
     name: "{{ default_user }}"
     groups: users
     state: present
- 
+  become: true
