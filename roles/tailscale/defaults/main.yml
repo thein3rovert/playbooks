@@ -3,3 +3,4 @@
 
 # TODO: Add --accept-routes later
 tailscale_up_flags: --ssh --operator=thein3rovert --qr
+
