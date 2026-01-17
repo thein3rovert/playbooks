@@ -6,6 +6,8 @@
   hosts: ubuntu-srv-01
   # connection: local
   gather_facts: true
+  vars_files:
+    - /vars/vault.yml
 
   tasks:
     - name: Run Nix Role
