@@ -1,10 +1,6 @@
 --- 
 # Default user and group
-
-default_user: thein3rovert
-default_group: users
 ssh_path: /home/thein3rovert/.ssh
 authorized_keys_path: /home/thein3rovert/.ssh/authorized_keys
-default_user_permission: 0700
 authorized_keys_permission: 0600
 

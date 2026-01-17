@@ -1,2 +1,5 @@
 environment: dev
 backup_enabled: false
+default_user: thein3rovert
+default_group: users
+default_user_permission: 0700
