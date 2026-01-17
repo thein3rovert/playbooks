@@ -12,3 +12,24 @@
     groups: users
     state: present
   become: true
+
+- name: Ensure .ssh directory exists for user
+  ansible.builtin.file:
+    path: "{{ssh_path}}"
+    state: directory
+    owner: "{{ default_user }}"
+    group: "{{ default_group }}"
+    mode: "{{ default_user_permission }}"
+
+- name: Add authorized key for user
+  authorized_key:
+    user: "{{ default_user }}"
+    state: present
+    key: "{{ ssh_pub_key }}"
+
+- name: Set correct permissions on authorized_keys
+  ansible.builtin.file:
+    path: "{{ authorized_keys_path }}"
+    owner: "{{ default_user }}"
+    group: "{{ default_group }}"
+    mode: "{{ authorized_keys_permission }}"
