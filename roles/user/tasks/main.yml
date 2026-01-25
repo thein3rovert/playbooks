@@ -33,3 +33,18 @@
     owner: "{{ default_user }}"
     group: "{{ default_group }}"
     mode: "{{ authorized_keys_permission }}"
+
+- name: Harden SSH daemon configuration
+  ansible.builtin.blockinfile:
+    path: /etc/ssh/sshd_config
+    marker: "# {mark} ANSIBLE MANAGED SSH HARDENING"
+    block: |
+      PasswordAuthentication no
+      PermitRootLogin no
+      PubkeyAuthentication yes
+      KbdInteractiveAuthentication no
+      UsePAM yes
+      AllowUsers {{ default_user }}
+      X11Forwarding no
+      MaxAuthTries 3
+  notify: Restart ssh
