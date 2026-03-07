@@ -1,3 +1,3 @@
-environment: prod
+env_name: prod
 backup_enabled: true
 db_port: 5432
