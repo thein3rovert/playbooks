@@ -1,0 +1,12 @@
+---
+- name: Ping host
+  ansible.builtin.ping:
+
+- name: Display host information
+  ansible.builtin.debug:
+    msg: |
+      Host: {{ inventory_hostname }}
+      Ansible Host: {{ ansible_host | default('not set') }}
+      OS Family: {{ ansible_facts.os_family | default('unknown') }}
+      Distribution: {{ ansible_facts.distribution | default('unknown') }} {{ ansible_facts.distribution_version | default('') }}
+      Python: {{ ansible_facts.python_version | default('unknown') }}

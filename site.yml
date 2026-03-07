@@ -10,6 +10,11 @@
     - ./vars/vault.yml
 
   tasks:
+    - name: Run Ping Role
+      ansible.builtin.import_role:
+        name: ping
+      tags: ping
+
     - name: Run Nix Role
       ansible.builtin.import_role:
         name: nix
