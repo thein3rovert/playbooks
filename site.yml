@@ -3,7 +3,7 @@
 # Usage: ansible-playbook site.yml --ask-become-pass --ask-vault-pass
 
 - name: Configure System
-  hosts: ubuntu-srv-01
+  hosts: ubuntu-srv-01,bellamy
   # connection: local
   gather_facts: true
   vars_files:
@@ -29,3 +29,8 @@
       ansible.builtin.import_role:
         name: user
       tags: user
+
+    - name: Run Backup Role
+      ansible.builtin.import_role:
+        name: backup
+      tags: backup
