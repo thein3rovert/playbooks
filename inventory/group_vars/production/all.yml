@@ -1,3 +1,6 @@
 env_name: prod
 backup_enabled: true
+default_user: thein3rovert
+default_group: users
+default_user_permission: 0700
 db_port: 5432
