@@ -3,7 +3,7 @@
 # Usage: ansible-playbook site.yml --ask-become-pass --ask-vault-pass
 
 - name: Configure System
-  hosts: ubuntu-srv-01,bellamy
+  hosts: all
   # connection: local
   gather_facts: true
   vars_files:
