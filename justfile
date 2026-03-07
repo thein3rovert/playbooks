@@ -11,17 +11,17 @@ default:
 # Run all playbooks on production
 [group('playbooks')]
 all:
-    ansible-playbook -i inventory/production.yml site.yml --ask-become-pass --ask-vault-pass
+    ansible-playbook -i inventory/production.yml site.yml
 
 # Run all playbooks on dev
 [group('playbooks')]
 all-dev:
-    ansible-playbook -i inventory/dev.yml site.yml --ask-become-pass --ask-vault-pass
+    ansible-playbook -i inventory/dev.yml site.yml
 
 # Run on specific host
 [group('playbooks')]
 host hostname env="production":
-    ansible-playbook -i inventory/{{ env }}.yml site.yml --limit {{ hostname }} --ask-become-pass --ask-vault-pass
+    ansible-playbook -i inventory/{{ env }}.yml site.yml --limit {{ hostname }}
 
 # ==============================
 #       ROLES
@@ -30,17 +30,17 @@ host hostname env="production":
 # Run a specific role on production
 [group('roles')]
 run role:
-    ansible-playbook -i inventory/production.yml site.yml --tags {{ role }} --ask-become-pass --ask-vault-pass
+    ansible-playbook -i inventory/production.yml site.yml --tags {{ role }}
 
 # Run a specific role on dev
 [group('roles')]
 run-dev role:
-    ansible-playbook -i inventory/dev.yml site.yml --tags {{ role }} --ask-become-pass --ask-vault-pass
+    ansible-playbook -i inventory/dev.yml site.yml --tags {{ role }}
 
 # Run a specific role on a specific host
 [group('roles')]
 run-host role host env="production":
-    ansible-playbook -i inventory/{{ env }}.yml site.yml --tags {{ role }} --limit {{ host }} --ask-become-pass --ask-vault-pass
+    ansible-playbook -i inventory/{{ env }}.yml site.yml --tags {{ role }} --limit {{ host }}
 
 # ==============================
 #       DRY RUN
@@ -49,32 +49,32 @@ run-host role host env="production":
 # Dry run all playbooks on production
 [group('dry-run')]
 dry-all:
-    ansible-playbook -i inventory/production.yml site.yml --check --ask-vault-pass
+    ansible-playbook -i inventory/production.yml site.yml --check
 
 # Dry run all playbooks on dev
 [group('dry-run')]
 dry-all-dev:
-    ansible-playbook -i inventory/dev.yml site.yml --check --ask-vault-pass
+    ansible-playbook -i inventory/dev.yml site.yml --check
 
 # Dry run on specific host
 [group('dry-run')]
 dry-host hostname env="production":
-    ansible-playbook -i inventory/{{ env }}.yml site.yml --limit {{ hostname }} --check --ask-vault-pass
+    ansible-playbook -i inventory/{{ env }}.yml site.yml --limit {{ hostname }} --check
 
 # Dry run a specific role on production
 [group('dry-run')]
 dry-run role:
-    ansible-playbook -i inventory/production.yml site.yml --tags {{ role }} --check --ask-vault-pass
+    ansible-playbook -i inventory/production.yml site.yml --tags {{ role }} --check
 
 # Dry run a specific role on dev
 [group('dry-run')]
 dry-run-dev role:
-    ansible-playbook -i inventory/dev.yml site.yml --tags {{ role }} --check --ask-vault-pass
+    ansible-playbook -i inventory/dev.yml site.yml --tags {{ role }} --check
 
 # Dry run a specific role on a specific host
 [group('dry-run')]
 dry-run-host role host env="production":
-    ansible-playbook -i inventory/{{ env }}.yml site.yml --tags {{ role }} --limit {{ host }} --check --ask-vault-pass
+    ansible-playbook -i inventory/{{ env }}.yml site.yml --tags {{ role }} --limit {{ host }} --check
 
 # ==============================
 #       INVENTORY
@@ -97,7 +97,7 @@ list-hosts env="production":
 # Syntax check
 [group('validation')]
 syntax env="production":
-    ansible-playbook -i inventory/{{ env }}.yml site.yml --syntax-check --ask-vault-pass
+    ansible-playbook -i inventory/{{ env }}.yml site.yml --syntax-check
 
 # ==============================
 #       VAULT
