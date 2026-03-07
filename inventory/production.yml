@@ -1,10 +1,10 @@
 all:
   children:
-    servers:
+    production:
       hosts:
         bellamy:
-          ansible_host: bellamy # bellamy
+          ansible_host: 100.105.187.63
         finn:
-          ansible_host: finn # finn
-        trikru:
-          ansible_host: trikru
+          ansible_host: 100.81.26.84
+        # trikru:
+        #   ansible_host: trikru
