@@ -1,0 +1,10 @@
+all:
+  children:
+    servers:
+      hosts:
+        bellamy:
+          ansible_host: bellamy # bellamy
+        finn:
+          ansible_host: finn # finn
+        trikru:
+          ansible_host: trikru
