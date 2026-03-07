@@ -6,5 +6,12 @@ all:
           ansible_host: 100.105.187.63
         finn:
           ansible_host: 100.81.26.84
-        # trikru:
-        #   ansible_host: trikru
+        marcus:
+          ansible_host: 100.68.54.18
+        # Kubernetes
+        server:
+          ansible_host: 100.68.106.100
+        node-0:
+          ansible_host: 100.72.97.99
+        node-1:
+          ansible_host: 100.90.77.80

@@ -5,3 +5,7 @@ all:
         ubuntu-srv-01:
           ansible_host: ubuntu-srv-01
           ansible_user: thein3rovert
+        lexa:
+          ansible_host: 100.88.29.64
+        nixos-runner:
+          ansible_host: 100.111.90.52
