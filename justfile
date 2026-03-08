@@ -1,4 +1,12 @@
 # Ansible Playbook Runner
+# 
+# Authentication: Vault password stored in .vault_pass (gitignored)
+#                 Become password stored in vars/vault.yml
+#                 No password prompts required
+#
+# Note: Host environment defaults to "production" unless specified
+#       Use 'dev' as second parameter for dev hosts
+#       Example: just run-host ping nixos-runner dev
 
 # Show all commands
 default:
@@ -18,7 +26,7 @@ all:
 all-dev:
     ansible-playbook -i inventory/dev.yml site.yml
 
-# Run on specific host
+# Run on specific host (default: production, specify 'dev' for dev hosts)
 [group('playbooks')]
 host hostname env="production":
     ansible-playbook -i inventory/{{ env }}.yml site.yml --limit {{ hostname }}
@@ -37,7 +45,7 @@ run role:
 run-dev role:
     ansible-playbook -i inventory/dev.yml site.yml --tags {{ role }}
 
-# Run a specific role on a specific host
+# Run a specific role on a specific host (default: production, add 'dev' for dev hosts)
 [group('roles')]
 run-host role host env="production":
     ansible-playbook -i inventory/{{ env }}.yml site.yml --tags {{ role }} --limit {{ host }}
@@ -56,7 +64,7 @@ dry-all:
 dry-all-dev:
     ansible-playbook -i inventory/dev.yml site.yml --check
 
-# Dry run on specific host
+# Dry run on specific host (default: production, add 'dev' for dev hosts)
 [group('dry-run')]
 dry-host hostname env="production":
     ansible-playbook -i inventory/{{ env }}.yml site.yml --limit {{ hostname }} --check
@@ -71,7 +79,7 @@ dry-run role:
 dry-run-dev role:
     ansible-playbook -i inventory/dev.yml site.yml --tags {{ role }} --check
 
-# Dry run a specific role on a specific host
+# Dry run a specific role on a specific host (default: production, add 'dev' for dev hosts)
 [group('dry-run')]
 dry-run-host role host env="production":
     ansible-playbook -i inventory/{{ env }}.yml site.yml --tags {{ role }} --limit {{ host }} --check

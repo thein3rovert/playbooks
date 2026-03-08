@@ -6,6 +6,11 @@ Ansible playbooks and roles for managing development and production infrastructu
 
 This project includes a `justfile` for simplified command execution. You can use either `just` commands or run `ansible-playbook` directly.
 
+**Note:** Authentication is configured to be passwordless:
+- Vault password is stored in `.vault_pass` (gitignored)
+- Become password is stored in the encrypted vault file
+- No password prompts required for any commands
+
 ### Using Just (Recommended)
 
 #### List available commands:
@@ -33,15 +38,28 @@ just run backup
 just run-dev backup
 ```
 
-#### Run on specific host:
+#### Run on specific host (production):
 ```bash
 just host bellamy
 ```
 
+#### Run on specific host (specify environment):
+```bash
+just host ubuntu-srv-01 dev
+```
+
 #### Run specific role on specific host:
 ```bash
-just run-host backup bellamy
-just run-host backup ubuntu-srv-01 dev
+just run-host backup bellamy              # Production (default)
+just run-host backup nixos-runner dev     # Dev environment
+```
+
+#### Dry run commands:
+```bash
+just dry-run-host ping bellamy            # Production (default)
+just dry-run-host ping nixos-runner dev   # Dev environment
+just dry-all                              # Dry run all on production
+just dry-all-dev                          # Dry run all on dev
 ```
 
 ### Using Ansible Directly
@@ -209,9 +227,26 @@ ansible-playbook -i inventory/production.yml site.yml --list-tasks
 The `ansible.cfg` file contains default settings. Key configurations:
 
 - **Inventory**: Specify with `-i` flag (production.yml or dev.yml)
+- **Vault password file**: `.vault_pass` (automatically loaded, no prompts)
 - **Forks**: 5 parallel processes
 - **Python interpreter**: /usr/bin/python3
 - **Host key checking**: Disabled
+
+### Setting Up Authentication
+
+1. **Create vault password file:**
+   ```bash
+   echo "your_vault_password" > .vault_pass
+   chmod 600 .vault_pass
+   ```
+
+2. **Add become password to vault:**
+   ```bash
+   just edit
+   # Add line: ansible_become_password: your_sudo_password
+   ```
+
+Once configured, all commands run without password prompts.
 
 ## Vault Management
 
