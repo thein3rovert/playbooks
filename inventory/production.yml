@@ -8,7 +8,14 @@ all:
           ansible_host: 100.81.26.84
         marcus:
           ansible_host: 100.68.54.18
-        # Kubernetes
+    # Kubernetes cluster
+    k3s_server:
+      hosts:
+        k3s-server:
+          ansible_host: 100.85.190.19
+          ansible_user: thein3rovert
+    k3s_nodes:
+      hosts:
         server:
           ansible_host: 100.68.106.100
         node-0:
