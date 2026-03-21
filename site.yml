@@ -40,3 +40,18 @@
       ansible.builtin.import_role:
         name: backup
       tags: backup
+
+# Kubernetes deployments
+# Requirements: ansible-galaxy collection install kubernetes.core
+- name: Deploy Kubernetes Applications
+  hosts: k3s_server
+  gather_facts: false
+  become: false
+  vars_files:
+    - ./vars/vault.yml
+
+  tasks:
+    - name: Run Linkding Role
+      ansible.builtin.import_role:
+        name: linkding
+      tags: linkding

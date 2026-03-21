@@ -1,0 +1,46 @@
+---
+# Linkding role - Default variables
+
+# Namespace
+linkding_namespace: linkding
+
+# Application settings
+linkding_image: sissbruecker/linkding
+linkding_image_tag: latest-plus  # Use latest-plus for extra features (yt-dlp, chromium)
+linkding_replicas: 1
+
+# Storage
+linkding_storage_size: 1Gi #2Gi
+linkding_storage_class: ""  # Leave empty for default storage class
+
+# Superuser credentials (override in vault!)
+linkding_superuser_name: admin
+linkding_superuser_password: changeme  #should be in vault.yml
+
+# Networking
+linkding_port: 9090
+linkding_hostname: linkding.l.thein3rovert.com
+
+# Ingress settings
+linkding_ingress_enabled: true
+linkding_ingress_class: traefik
+
+# No tls for now (Running locally)
+linkding_tls_enabled: false
+# linkding_tls_secret_name: linkding-tls
+
+# Resource limits (optional but recommended)
+linkding_resources:
+  requests:
+    memory: "128Mi"
+    cpu: "100m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"
+
+# Additional environment variables
+linkding_extra_env: []
+#   - name: LD_DISABLE_BACKGROUND_TASKS
+#     value: "False"
+#   - name: LD_DISABLE_URL_VALIDATION
+#     value: "False"

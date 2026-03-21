@@ -1,0 +1,187 @@
+---
+# Linkding role - Deploy Linkding bookmark manager to Kubernetes
+# Requires: kubernetes.core collection (ansible-galaxy collection install kubernetes.core)
+
+- name: Ensure linkding namespace exists
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ linkding_namespace }}"
+        labels:
+          app.kubernetes.io/name: linkding
+          app.kubernetes.io/managed-by: ansible
+
+- name: Create linkding secret for superuser credentials
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: linkding-credentials
+        namespace: "{{ linkding_namespace }}"
+        labels:
+          app.kubernetes.io/name: linkding
+          app.kubernetes.io/component: secret
+      type: Opaque
+      stringData:
+        LD_SUPERUSER_NAME: "{{ linkding_superuser_name }}"
+        LD_SUPERUSER_PASSWORD: "{{ linkding_superuser_password }}"
+  no_log: true
+
+- name: Create linkding PersistentVolumeClaim
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: linkding-data
+        namespace: "{{ linkding_namespace }}"
+        labels:
+          app.kubernetes.io/name: linkding
+          app.kubernetes.io/component: storage
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: "{{ linkding_storage_class | default(omit, true) }}"
+        resources:
+          requests:
+            storage: "{{ linkding_storage_size }}"
+
+- name: Deploy linkding application
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: linkding
+        namespace: "{{ linkding_namespace }}"
+        labels:
+          app.kubernetes.io/name: linkding
+          app.kubernetes.io/component: app
+      spec:
+        replicas: "{{ linkding_replicas }}"
+        strategy:
+          type: Recreate  # Required for RWO PVC
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: linkding
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: linkding
+          spec:
+            securityContext:
+              fsGroup: 33  # www-data group
+            containers:
+              - name: linkding
+                image: "{{ linkding_image }}:{{ linkding_image_tag }}"
+                imagePullPolicy: IfNotPresent
+                ports:
+                  - name: http
+                    containerPort: 9090
+                    protocol: TCP
+                envFrom:
+                  - secretRef:
+                      name: linkding-credentials
+                env: "{{ linkding_extra_env | default([], true) }}"
+                resources: "{{ linkding_resources }}"
+                volumeMounts:
+                  - name: data
+                    mountPath: /etc/linkding/data
+                livenessProbe:
+                  httpGet:
+                    path: /health
+                    port: http
+                  initialDelaySeconds: 30
+                  periodSeconds: 10
+                readinessProbe:
+                  httpGet:
+                    path: /health
+                    port: http
+                  initialDelaySeconds: 5
+                  periodSeconds: 5
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  readOnlyRootFilesystem: false
+            volumes:
+              - name: data
+                persistentVolumeClaim:
+                  claimName: linkding-data
+
+- name: Create linkding Service
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: linkding
+        namespace: "{{ linkding_namespace }}"
+        labels:
+          app.kubernetes.io/name: linkding
+          app.kubernetes.io/component: service
+      spec:
+        type: ClusterIP
+        selector:
+          app.kubernetes.io/name: linkding
+        ports:
+          - name: http
+            port: "{{ linkding_port }}"
+            targetPort: http
+            protocol: TCP
+
+- name: Create linkding Ingress
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: linkding
+        namespace: "{{ linkding_namespace }}"
+        labels:
+          app.kubernetes.io/name: linkding
+          app.kubernetes.io/component: ingress
+        annotations:
+          traefik.ingress.kubernetes.io/router.entrypoints: "{{ 'websecure' if linkding_tls_enabled else 'web' }}"
+      spec:
+        ingressClassName: "{{ linkding_ingress_class }}"
+        rules:
+          - host: "{{ linkding_hostname }}"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: linkding
+                      port:
+                        number: "{{ linkding_port }}"
+        tls: "{{ [{'hosts': [linkding_hostname], 'secretName': linkding_tls_secret_name}] if linkding_tls_enabled else omit }}"
+  when: linkding_ingress_enabled
+
+- name: Wait for linkding deployment to be ready
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    name: linkding
+    namespace: "{{ linkding_namespace }}"
+  register: linkding_deployment
+  until: 
+    - linkding_deployment.resources[0].status.readyReplicas is defined
+    - linkding_deployment.resources[0].status.readyReplicas == linkding_replicas
+  retries: 30
+  delay: 10
+
+- name: Display linkding access information
+  ansible.builtin.debug:
+    msg:
+      - "Linkding deployed successfully!"
+      - "URL: http{{ 's' if linkding_tls_enabled else '' }}://{{ linkding_hostname }}"
+      - "Username: {{ linkding_superuser_name }}"
