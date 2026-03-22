@@ -2,8 +2,23 @@
 # Linkding role - Deploy Linkding bookmark manager to Kubernetes
 # Requires: kubernetes.core collection (ansible-galaxy collection install kubernetes.core)
 
+- name: Check if linkding deployment already exists
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: linkding
+    namespace: "{{ linkding_namespace }}"
+  register: linkding_existing
+
+- name: Skip deployment if linkding already exists
+  ansible.builtin.debug:
+    msg: "Linkding deployment already exists in namespace '{{ linkding_namespace }}' - skipping installation"
+  when: linkding_existing.resources | length > 0
+
 - name: Ensure linkding namespace exists
   kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
     state: present
     definition:
       apiVersion: v1
@@ -13,9 +28,11 @@
         labels:
           app.kubernetes.io/name: linkding
           app.kubernetes.io/managed-by: ansible
+  when: linkding_existing.resources | length == 0
 
 - name: Create linkding secret for superuser credentials
   kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
     state: present
     definition:
       apiVersion: v1
@@ -31,9 +48,11 @@
         LD_SUPERUSER_NAME: "{{ linkding_superuser_name }}"
         LD_SUPERUSER_PASSWORD: "{{ linkding_superuser_password }}"
   no_log: true
+  when: linkding_existing.resources | length == 0
 
 - name: Create linkding PersistentVolumeClaim
   kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
     state: present
     definition:
       apiVersion: v1
@@ -51,9 +70,11 @@
         resources:
           requests:
             storage: "{{ linkding_storage_size }}"
+  when: linkding_existing.resources | length == 0
 
 - name: Deploy linkding application
   kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
     state: present
     definition:
       apiVersion: apps/v1
@@ -113,9 +134,11 @@
               - name: data
                 persistentVolumeClaim:
                   claimName: linkding-data
+  when: linkding_existing.resources | length == 0
 
 - name: Create linkding Service
   kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
     state: present
     definition:
       apiVersion: v1
@@ -135,9 +158,11 @@
             port: "{{ linkding_port }}"
             targetPort: http
             protocol: TCP
+  when: linkding_existing.resources | length == 0
 
 - name: Create linkding Ingress
   kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
     state: present
     definition:
       apiVersion: networking.k8s.io/v1
@@ -164,10 +189,13 @@
                       port:
                         number: "{{ linkding_port }}"
         tls: "{{ [{'hosts': [linkding_hostname], 'secretName': linkding_tls_secret_name}] if linkding_tls_enabled else omit }}"
-  when: linkding_ingress_enabled
+  when: 
+    - linkding_ingress_enabled
+    - linkding_existing.resources | length == 0
 
 - name: Wait for linkding deployment to be ready
   kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
     api_version: apps/v1
     kind: Deployment
     name: linkding
@@ -178,6 +206,7 @@
     - linkding_deployment.resources[0].status.readyReplicas == linkding_replicas
   retries: 30
   delay: 10
+  when: linkding_existing.resources | length == 0
 
 - name: Display linkding access information
   ansible.builtin.debug:
@@ -185,3 +214,4 @@
       - "Linkding deployed successfully!"
       - "URL: http{{ 's' if linkding_tls_enabled else '' }}://{{ linkding_hostname }}"
       - "Username: {{ linkding_superuser_name }}"
+  when: linkding_existing.resources | length == 0

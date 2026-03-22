@@ -1,0 +1,13 @@
+---
+# k8s-prereqs role - Install prerequisites for Kubernetes management via Ansible
+
+- name: Install Python kubernetes library via apt
+  ansible.builtin.apt:
+    name:
+      - python3-kubernetes
+      - python3-yaml
+    state: present
+    update_cache: true
+
+- name: Reset connection to reload Python modules
+  ansible.builtin.meta: reset_connection

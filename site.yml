@@ -46,11 +46,18 @@
 - name: Deploy Kubernetes Applications
   hosts: k3s_server
   gather_facts: false
-  become: false
+  become: true
   vars_files:
     - ./vars/vault.yml
 
   tasks:
+    - name: Run k8s-prereqs Role
+      ansible.builtin.import_role:
+        name: k8s-prereqs
+      tags: 
+        - k8s-prereqs
+        - linkding
+
     - name: Run Linkding Role
       ansible.builtin.import_role:
         name: linkding

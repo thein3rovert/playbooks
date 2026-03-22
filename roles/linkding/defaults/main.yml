@@ -1,6 +1,9 @@
 ---
 # Linkding role - Default variables
 
+# Kubernetes config
+k8s_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
 # Namespace
 linkding_namespace: linkding
 
