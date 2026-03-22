@@ -26,12 +26,12 @@
         name: systemd
       tags: systemd
 
-    - name: Run Tailscale role 
+    - name: Run Tailscale role
       ansible.builtin.import_role:
         name: tailscale
       tags: tailscale
- 
-    - name: Run User role 
+
+    - name: Run User role
       ansible.builtin.import_role:
         name: user
       tags: user
@@ -54,7 +54,7 @@
     - name: Run k8s-prereqs Role
       ansible.builtin.import_role:
         name: k8s-prereqs
-      tags: 
+      tags:
         - k8s-prereqs
         - linkding
 
