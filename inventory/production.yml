@@ -4,10 +4,13 @@ all:
       hosts:
         bellamy:
           ansible_host: 100.105.187.63
+          ansible_user: thein3rovert
         finn:
           ansible_host: 100.81.26.84
+          ansible_user: thein3rovert
         marcus:
           ansible_host: 100.68.54.18
+          ansible_user: thein3rovert
     # Kubernetes cluster
     k3s_server:
       hosts:
