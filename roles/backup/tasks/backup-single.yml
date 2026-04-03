@@ -2,6 +2,7 @@
 - name: Create tar for {{ service_path }}
   command: >
     tar czf {{ backup_temp_dir }}/{{ service_path | basename }}.tar.gz
+    --ignore-failed-read
     {{ service_path }}
 
 - name: Upload service tar to MinIO
@@ -9,3 +10,22 @@
   command: >
     mc cp {{ backup_temp_dir }}/{{ service_path | basename }}.tar.gz
     {{ minio_alias }}/{{ minio_bucket }}/services/{{ service_path | basename }}-{{ date_tag }}.tar.gz
+
+- name: List old backups for {{ service_path | basename }}
+  become: false
+  shell: >
+    mc ls {{ minio_alias }}/{{ minio_bucket }}/services/ |
+    grep '{{ service_path | basename }}-' |
+    sort -r |
+    tail -n +3 |
+    awk '{print $NF}'
+  register: old_backups
+  changed_when: false
+  failed_when: false
+
+- name: Delete old backups (keep last 2)
+  become: false
+  command: >
+    mc rm {{ minio_alias }}/{{ minio_bucket }}/services/{{ item }}
+  loop: "{{ old_backups.stdout_lines }}"
+  when: old_backups.stdout_lines | length > 0
