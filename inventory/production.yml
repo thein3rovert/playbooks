@@ -2,6 +2,9 @@ all:
   children:
     production:
       hosts:
+        becca:
+          ansible_host: 10.10.10.101
+          ansible_user: root
         bellamy:
           ansible_host: 100.105.187.63
           ansible_user: thein3rovert

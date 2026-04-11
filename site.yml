@@ -11,6 +11,11 @@
     - ./vars/vault.yml
 
   tasks:
+    - name: Run Bootstrap Role
+      ansible.builtin.import_role:
+        name: bootstrap
+      tags: bootstrap
+
     - name: Run Ping Role
       ansible.builtin.import_role:
         name: ping
