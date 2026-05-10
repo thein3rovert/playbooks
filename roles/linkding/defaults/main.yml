@@ -14,6 +14,7 @@ linkding_replicas: 1
 
 # Storage
 linkding_storage_size: 1Gi #2Gi
+# Default Storage Class is currently Longhorn
 linkding_storage_class: ""  # Leave empty for default storage class
 
 # Superuser credentials (override in vault!)

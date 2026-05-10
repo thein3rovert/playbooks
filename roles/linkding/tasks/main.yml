@@ -189,7 +189,7 @@
                       port:
                         number: "{{ linkding_port }}"
         tls: "{{ [{'hosts': [linkding_hostname], 'secretName': linkding_tls_secret_name}] if linkding_tls_enabled else omit }}"
-  when: 
+  when:
     - linkding_ingress_enabled
     - linkding_existing.resources | length == 0
 
@@ -201,7 +201,7 @@
     name: linkding
     namespace: "{{ linkding_namespace }}"
   register: linkding_deployment
-  until: 
+  until:
     - linkding_deployment.resources[0].status.readyReplicas is defined
     - linkding_deployment.resources[0].status.readyReplicas == linkding_replicas
   retries: 30
