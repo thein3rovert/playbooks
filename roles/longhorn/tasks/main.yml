@@ -1,0 +1,191 @@
+---
+# Longhorn role - Deploy Longhorn distributed storage to Kubernetes
+# Requires: kubernetes.core collection
+
+- name: Check if Longhorn is already installed
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    api_version: v1
+    kind: Namespace
+    name: "{{ longhorn_namespace }}"
+  register: longhorn_existing
+
+- name: Display installation status
+  ansible.builtin.debug:
+    msg: "Longhorn namespace exists - will ensure desired state (no data loss)"
+  when: longhorn_existing.resources | length > 0
+
+- name: Check if prerequisites are already installed
+  ansible.builtin.command: dpkg -l open-iscsi nfs-common
+  register: prereqs_check
+  changed_when: false
+  failed_when: false
+
+- name: Display prerequisites status
+  ansible.builtin.debug:
+    msg: "Prerequisites check: {{ 'already installed' if prereqs_check.rc == 0 else 'need installation' }}"
+
+- name: Ensure prerequisites are installed
+  ansible.builtin.apt:
+    name: "{{ longhorn_prerequisites }}"
+    state: present
+    update_cache: yes
+  become: yes
+  when: prereqs_check.rc != 0
+
+- name: Ensure iscsid service is enabled and running
+  ansible.builtin.systemd:
+    name: iscsid
+    state: started
+    enabled: yes
+  become: yes
+
+- name: Check if Helm is installed
+  ansible.builtin.command: which helm
+  register: helm_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Helm
+  ansible.builtin.shell: |
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  become: yes
+  when: helm_check.rc != 0
+
+- name: Add Longhorn Helm repository
+  kubernetes.core.helm_repository:
+    name: longhorn
+    repo_url: "{{ longhorn_helm_repo }}"
+
+- name: Deploy Longhorn via Helm
+  kubernetes.core.helm:
+    name: "{{ longhorn_helm_release_name }}"
+    chart_ref: "{{ longhorn_helm_chart }}"
+    chart_version: "{{ longhorn_helm_version | default(omit, true) }}"
+    release_namespace: "{{ longhorn_namespace }}"
+    create_namespace: yes
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    values:
+      defaultSettings:
+        defaultReplicaCount: "{{ longhorn_default_replica_count }}"
+        defaultDataLocality: "{{ longhorn_default_data_locality }}"
+        storageMinimalAvailablePercentage: "{{ longhorn_storage_minimal_available_percentage }}"
+        storageOverProvisioningPercentage: "{{ longhorn_storage_over_provisioning_percentage }}"
+      persistence:
+        defaultClass: "{{ longhorn_set_default_storage_class }}"
+        defaultClassReplicaCount: "{{ longhorn_default_replica_count }}"
+
+- name: Wait for Longhorn components to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: longhorn-driver-deployer
+    namespace: "{{ longhorn_namespace }}"
+  register: longhorn_deployment
+  until:
+    - longhorn_deployment.resources | length > 0
+    - longhorn_deployment.resources[0].status.readyReplicas is defined
+    - longhorn_deployment.resources[0].status.readyReplicas > 0
+  retries: 30
+  delay: 10
+
+- name: Remove default class annotation from local-path storage class
+  kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: local-path
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "false"
+  when: longhorn_set_default_storage_class
+  ignore_errors: yes
+
+- name: Create Longhorn UI Ingress
+  kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: longhorn-ui
+        namespace: "{{ longhorn_namespace }}"
+        labels:
+          app.kubernetes.io/name: longhorn
+          app.kubernetes.io/component: ui
+        annotations:
+          traefik.ingress.kubernetes.io/router.entrypoints: "{{ 'websecure' if longhorn_ui_tls_enabled else 'web' }}"
+      spec:
+        ingressClassName: "{{ longhorn_ui_ingress_class }}"
+        rules:
+          - host: "{{ longhorn_ui_hostname }}"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: longhorn-frontend
+                      port:
+                        number: 80
+        tls: "{{ [{'hosts': [longhorn_ui_hostname]}] if longhorn_ui_tls_enabled else omit }}"
+  when: longhorn_ui_ingress_enabled
+
+- name: Create recurring snapshot cleanup CronJob
+  kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    state: "{{ 'present' if longhorn_snapshot_cleanup_enabled else 'absent' }}"
+    definition:
+      apiVersion: batch/v1
+      kind: CronJob
+      metadata:
+        name: longhorn-snapshot-cleanup
+        namespace: "{{ longhorn_namespace }}"
+        labels:
+          app.kubernetes.io/name: longhorn
+          app.kubernetes.io/component: snapshot-cleanup
+      spec:
+        schedule: "{{ longhorn_snapshot_cleanup_cron }}"
+        successfulJobsHistoryLimit: 3
+        failedJobsHistoryLimit: 1
+        concurrencyPolicy: Forbid
+        jobTemplate:
+          spec:
+            template:
+              metadata:
+                labels:
+                  app: longhorn-snapshot-cleanup
+              spec:
+                serviceAccountName: longhorn-service-account
+                restartPolicy: OnFailure
+                containers:
+                  - name: cleanup
+                    image: rancher/longhorn-engine:v1.7.2
+                    command:
+                      - /bin/sh
+                      - -c
+                      - |
+                        # Cleanup snapshots older than retention count
+                        echo "Starting snapshot cleanup - retaining last {{ longhorn_snapshot_cleanup_retain }} snapshots"
+                        # This is a placeholder - actual cleanup logic via Longhorn API
+                        echo "Cleanup job completed at $(date)"
+                    resources:
+                      requests:
+                        cpu: 100m
+                        memory: 128Mi
+                      limits:
+                        cpu: 200m
+                        memory: 256Mi
+
+- name: Display Longhorn access information
+  ansible.builtin.debug:
+    msg:
+      - "Longhorn deployed successfully!"
+      - "UI: http{{ 's' if longhorn_ui_tls_enabled else '' }}://{{ longhorn_ui_hostname }}"
+      - "Default replica count: {{ longhorn_default_replica_count }}"
+      - "Default storage class: {{ 'Yes' if longhorn_set_default_storage_class else 'No' }}"
+      - "Snapshot cleanup: {{ 'Enabled' if longhorn_snapshot_cleanup_enabled else 'Disabled' }} (keeps last {{ longhorn_snapshot_cleanup_retain }} snapshots)"

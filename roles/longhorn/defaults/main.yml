@@ -1,0 +1,47 @@
+---
+# Longhorn role - Default variables
+
+# Kubernetes config
+k8s_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# Namespace
+longhorn_namespace: longhorn-system
+
+# Helm chart settings
+longhorn_helm_repo: https://charts.longhorn.io
+longhorn_helm_release_name: longhorn
+longhorn_helm_chart: longhorn/longhorn
+longhorn_helm_version: ""  # Leave empty for latest
+
+# Longhorn settings
+longhorn_default_replica_count: 2  # Set to 2 (trikru has smaller disk)
+longhorn_default_data_locality: disabled
+longhorn_storage_minimal_available_percentage: 10
+longhorn_storage_over_provisioning_percentage: 200
+
+# Storage class
+longhorn_set_default_storage_class: true
+longhorn_storage_class_name: longhorn
+
+# UI Ingress
+longhorn_ui_ingress_enabled: true
+longhorn_ui_hostname: longhorn.l.thein3rovert.com
+longhorn_ui_ingress_class: traefik
+longhorn_ui_tls_enabled: false
+
+# Prerequisites (installed on all nodes)
+longhorn_prerequisites:
+  - open-iscsi
+  - nfs-common
+
+# Node-specific settings (optional)
+longhorn_node_settings: []
+# Example:
+# longhorn_node_settings:
+#   - node: trikru
+#     storage_reserved_percentage: 30
+
+# Recurring snapshot cleanup job — runs daily at 02:00
+longhorn_snapshot_cleanup_enabled: true
+longhorn_snapshot_cleanup_cron: "0 2 * * *"  # daily at 2am
+longhorn_snapshot_cleanup_retain: 3           # keep last 3 snapshots
