@@ -63,6 +63,13 @@
         - k8s-prereqs
         - linkding
 
+    - name: Run Longhorn Role
+      ansible.builtin.import_role:
+        name: longhorn
+      tags:
+        - longhorn
+        - storage
+
     - name: Run Linkding Role
       ansible.builtin.import_role:
         name: linkding
