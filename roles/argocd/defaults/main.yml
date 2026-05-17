@@ -1,0 +1,49 @@
+---
+# ArgoCD role - Default variables
+
+# Kubernetes config
+k8s_kubeconfig: /etc/rancher/k3s/k3s.yaml
+
+# Namespace
+argocd_namespace: argocd
+
+# ArgoCD version
+argocd_version: v2.13.2  # Leave empty for latest stable
+
+# UI Ingress
+argocd_ui_ingress_enabled: true
+argocd_ui_hostname: argocd.l.thein3rovert.com
+argocd_ui_ingress_class: traefik
+argocd_ui_tls_enabled: false
+
+# Git repository to sync
+argocd_repo_url: git@github.com:thein3rovert/nixos-config.git
+argocd_repo_path: k8s/apps  # Path in repo where k8s manifests live
+argocd_repo_branch: main
+
+# Admin password (override in vault!)
+argocd_admin_password: changeme  # Initial password, change via UI after first login
+
+# Resource limits
+argocd_resources:
+  server:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  controller:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  repoServer:
+    requests:
+      memory: "128Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"

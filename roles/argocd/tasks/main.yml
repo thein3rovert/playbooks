@@ -1,0 +1,153 @@
+---
+# ArgoCD role - Deploy ArgoCD GitOps to Kubernetes
+# Requires: kubernetes.core collection
+
+- name: Check if ArgoCD is already installed
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    api_version: v1
+    kind: Namespace
+    name: "{{ argocd_namespace }}"
+  register: argocd_existing
+
+- name: Display installation status
+  ansible.builtin.debug:
+    msg: "{{ 'ArgoCD namespace exists - will ensure desired state' if argocd_existing.resources | length > 0 else 'Installing ArgoCD for the first time' }}"
+
+- name: Create ArgoCD namespace
+  kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ argocd_namespace }}"
+
+- name: Download ArgoCD install manifest
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/argoproj/argo-cd/{{ argocd_version }}/manifests/install.yaml"
+    dest: /tmp/argocd-install.yaml
+    mode: '0644'
+  when: argocd_version != ""
+
+- name: Download ArgoCD install manifest (latest)
+  ansible.builtin.get_url:
+    url: "https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml"
+    dest: /tmp/argocd-install.yaml
+    mode: '0644'
+  when: argocd_version == ""
+
+- name: Apply ArgoCD installation manifest
+  kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    state: present
+    src: /tmp/argocd-install.yaml
+    namespace: "{{ argocd_namespace }}"
+
+- name: Wait for ArgoCD server to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd_namespace }}"
+  register: argocd_deployment
+  until:
+    - argocd_deployment.resources | length > 0
+    - argocd_deployment.resources[0].status.readyReplicas is defined
+    - argocd_deployment.resources[0].status.readyReplicas > 0
+  retries: 30
+  delay: 10
+
+- name: Set insecure mode in ArgoCD config
+  kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cmd-params-cm
+        namespace: "{{ argocd_namespace }}"
+      data:
+        server.insecure: "true"
+
+- name: Patch ArgoCD server deployment for insecure mode
+  ansible.builtin.shell: |
+    kubectl get deployment argocd-server -n {{ argocd_namespace }} -o json | \
+    jq '.spec.template.spec.containers[0].command = ["argocd-server"] | .spec.template.spec.containers[0].args = ["--insecure"]' | \
+    kubectl apply -f -
+  environment:
+    KUBECONFIG: "{{ k8s_kubeconfig }}"
+  register: patch_result
+  changed_when: "'configured' in patch_result.stdout"
+
+- name: Wait for patched ArgoCD server to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    api_version: apps/v1
+    kind: Deployment
+    name: argocd-server
+    namespace: "{{ argocd_namespace }}"
+  register: argocd_patched
+  until:
+    - argocd_patched.resources | length > 0
+    - argocd_patched.resources[0].status.readyReplicas is defined
+    - argocd_patched.resources[0].status.readyReplicas > 0
+  retries: 20
+  delay: 10
+
+- name: Create ArgoCD UI Ingress
+  kubernetes.core.k8s:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    state: present
+    definition:
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: argocd-server
+        namespace: "{{ argocd_namespace }}"
+        labels:
+          app.kubernetes.io/name: argocd-server
+          app.kubernetes.io/component: server
+        annotations:
+          traefik.ingress.kubernetes.io/router.entrypoints: "{{ 'websecure' if argocd_ui_tls_enabled else 'web' }}"
+      spec:
+        ingressClassName: "{{ argocd_ui_ingress_class }}"
+        rules:
+          - host: "{{ argocd_ui_hostname }}"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: argocd-server
+                      port:
+                        number: 80
+        tls: "{{ [{'hosts': [argocd_ui_hostname]}] if argocd_ui_tls_enabled else omit }}"
+  when: argocd_ui_ingress_enabled
+
+- name: Get ArgoCD admin initial password
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ k8s_kubeconfig }}"
+    api_version: v1
+    kind: Secret
+    name: argocd-initial-admin-secret
+    namespace: "{{ argocd_namespace }}"
+  register: argocd_admin_secret
+
+- name: Display ArgoCD access information
+  ansible.builtin.debug:
+    msg:
+      - "ArgoCD deployed successfully!"
+      - "UI: http{{ 's' if argocd_ui_tls_enabled else '' }}://{{ argocd_ui_hostname }}"
+      - "Username: admin"
+      - "Password: {{ argocd_admin_secret.resources[0].data.password | b64decode if argocd_admin_secret.resources | length > 0 else 'Check secret: kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath={.data.password} | base64 -d' }}"
+      - ""
+      - "Next steps:"
+      - "1. Log in to ArgoCD UI"
+      - "2. Change admin password (User Info > Update Password)"
+      - "3. Connect your Git repository (Settings > Repositories)"
+      - "4. Create applications to sync from {{ argocd_repo_url }}"

@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: Samad
+  description: Deploy ArgoCD GitOps continuous delivery tool to Kubernetes
+  license: MIT
+  min_ansible_version: "2.15"
+  
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+
+  galaxy_tags:
+    - kubernetes
+    - k3s
+    - gitops
+    - argocd
+    - cicd
+    - homelab
+
+dependencies: []
