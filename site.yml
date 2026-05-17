@@ -46,6 +46,11 @@
         name: backup
       tags: backup
 
+    - name: Run GitHub Runner Role
+      ansible.builtin.import_role:
+        name: github-runner
+      tags: github-runner
+
 # Kubernetes deployments
 # Requirements: ansible-galaxy collection install kubernetes.core
 - name: Deploy Kubernetes Applications
@@ -69,6 +74,13 @@
       tags:
         - longhorn
         - storage
+
+    - name: Run ArgoCD Role
+      ansible.builtin.import_role:
+        name: argocd
+      tags:
+        - argocd
+        - gitops
 
     - name: Run Linkding Role
       ansible.builtin.import_role:
