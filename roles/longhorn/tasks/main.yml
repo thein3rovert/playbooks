@@ -164,15 +164,32 @@
                 restartPolicy: OnFailure
                 containers:
                   - name: cleanup
-                    image: rancher/longhorn-engine:v1.7.2
+                    image: docker.io/library/alpine:3.19
+                    env:
+                      - name: LONGHORN_NAMESPACE
+                        value: "{{ longhorn_namespace }}"
                     command:
                       - /bin/sh
                       - -c
                       - |
-                        # Cleanup snapshots older than retention count
+                        apk add --no-cache kubectl jq curl
+                        # Get snapshots and keep only the last {{ longhorn_snapshot_cleanup_retain }} per volume
                         echo "Starting snapshot cleanup - retaining last {{ longhorn_snapshot_cleanup_retain }} snapshots"
-                        # This is a placeholder - actual cleanup logic via Longhorn API
-                        echo "Cleanup job completed at $(date)"
+                        
+                        kubectl get volumes -n $LONGHORN_NAMESPACE -o json | jq -r '.items[] | select(.status.state=="attached") | .metadata.name' | while read vol; do
+                          echo "Processing volume: $vol"
+                          SNAP_COUNT=$(kubectl get snapshots -n $LONGHORN_NAMESPACE -l kubernetes.io/longhorn-volume=$vol -o json | jq -r '.items | length')
+                          if [ "$SNAP_COUNT" -gt {{ longhorn_snapshot_cleanup_retain }} ]; then
+                            DELETE_COUNT=$((SNAP_COUNT - {{ longhorn_snapshot_cleanup_retain }}))
+                            echo "Deleting $DELETE_COUNT old snapshots from volume $vol"
+                            kubectl get snapshots -n $LONGHORN_NAMESPACE -l kubernetes.io/longhorn-volume=$vol -o json | jq -r '.items[0:-{{ longhorn_snapshot_cleanup_retain }}}] | .[].metadata.name' | while read snap; do
+                              kubectl delete snapshot $snap -n $LONGHORN_NAMESPACE 2>/dev/null || true
+                            done
+                          else
+                            echo "Volume $vol has $SNAP_COUNT snapshots, keeping all"
+                          fi
+                        done
+                        echo "Snapshot cleanup completed at $(date)"
                     resources:
                       requests:
                         cpu: 100m
