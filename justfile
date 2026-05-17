@@ -50,6 +50,11 @@ run-dev role:
 run-host role host env="production":
     ansible-playbook -i inventory/{{ env }}.yml site.yml --tags {{ role }} --limit {{ host }}
 
+# Run a single playbook against a host
+[group('playbooks')]
+playbook playbook host env="production":
+    GITHUB_RUNNER_TOKEN=$${GITHUB_RUNNER_TOKEN} ansible-playbook -i inventory/{{ env }}.yml "playbooks/{{ playbook }}.yml" --limit {{ host }}
+
 # ==============================
 #       DRY RUN
 # ==============================
@@ -120,3 +125,12 @@ edit:
 [group('vault')]
 rekey:
     ansible-vault rekey vars/vault.yml
+
+# ==============================
+#       GITHUB RUNNER
+# ==============================
+
+# Configure GitHub runner (set GITHUB_RUNNER_TOKEN env var)
+[group('github-runner')]
+setup:
+    GITHUB_RUNNER_TOKEN="{{ env.GITHUB_RUNNER_TOKEN }}" ansible-playbook -i inventory/production.yml playbooks/github-runner.yml --limit github-runner --extra-vars "ansible_python_interpreter=/usr/bin/python3"
