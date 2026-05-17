@@ -1,0 +1,40 @@
+---
+# Playbook to set up GitHub Actions Runner
+
+- name: Configure GitHub Actions Runner
+  hosts: github-runner
+  become: true
+  gather_facts: true
+  vars_files:
+    - ./vars/vault.yml
+
+  vars:
+    github_runner_token: "{{ lookup('env', 'GITHUB_RUNNER_TOKEN') }}"
+
+  pre_tasks:
+    - name: Fail if no token provided
+      ansible.builtin.fail:
+        msg: "GITHUB_RUNNER_TOKEN environment variable not set. Get token from: GitHub > Settings > Actions > Runners > New runner"
+      when: github_runner_token | length == 0
+
+  tasks:
+    - name: Run GitHub Runner Role
+      ansible.builtin.import_role:
+        name: github-runner
+      tags: github-runner
+
+  post_tasks:
+    - name: Verify runner is registered
+      ansible.builtin.uri:
+        url: "https://api.github.com/repos/thein3rovert/nixos-config/actions/runners"
+        method: GET
+        headers:
+          Authorization: "token {{ github_runner_token }}"
+        status_code: 200
+      register: runners_list
+
+    - name: Display registered runners
+      ansible.builtin.debug:
+        msg: |
+          Registered runners:
+          {{ runners_list.json.runners | map(attribute='name') | list }}"}

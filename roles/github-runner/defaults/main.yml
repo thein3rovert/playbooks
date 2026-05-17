@@ -1,0 +1,23 @@
+---
+# defaults file for github-runner
+
+# GitHub runner version
+github_runner_version: "2.334.0"
+
+# SHA256 hash for validation ( runner v2.334.0 )
+github_runner_sha256: "048024cd2c848eb6f14d5646d56c13a4def2ae7ee3ad12122bee960c56f3d271"
+
+# GitHub organization/repository
+github_runner_url: "https://github.com/thein3rovert/nixos-config"
+
+# Runner name
+github_runner_name: "github-runner"
+
+# Labels (comma separated)
+github_runner_labels: "self-hosted,Linux,X64,terraform"
+
+# Installation directory
+github_runner_install_dir: "/opt/actions-runner"
+
+# Token - MUST be set via environment variable or extra vars
+# github_runner_token: ""

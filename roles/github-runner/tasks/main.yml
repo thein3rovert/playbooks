@@ -1,0 +1,106 @@
+---
+# tasks file for github-runner
+
+- name: Check if runner already exists
+  ansible.builtin.stat:
+    path: "{{ github_runner_install_dir }}/.runner"
+  register: runner_exists
+
+- name: Display runner status
+  ansible.builtin.debug:
+    msg: "GitHub runner already configured at {{ github_runner_install_dir }}"
+  when: runner_exists.stat.exists
+
+- name: Create runner user
+  ansible.builtin.user:
+    name: runner
+    comment: "GitHub Actions Runner"
+    shell: /bin/bash
+    create_home: true
+  when: not runner_exists.stat.exists
+
+- name: Create runner installation directory
+  ansible.builtin.file:
+    path: "{{ github_runner_install_dir }}"
+    state: directory
+    owner: runner
+    group: runner
+    mode: '0755'
+  when: not runner_exists.stat.exists
+
+- name: Download GitHub Actions runner
+  ansible.builtin.get_url:
+    url: "https://github.com/actions/runner/releases/download/v{{ github_runner_version }}/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    dest: "/tmp/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    mode: '0644'
+  when: not runner_exists.stat.exists
+
+- name: Extract runner archive
+  ansible.builtin.unarchive:
+    src: "/tmp/actions-runner-linux-x64-{{ github_runner_version }}.tar.gz"
+    dest: "{{ github_runner_install_dir }}"
+    remote_src: true
+    owner: runner
+    group: runner
+    creates: "{{ github_runner_install_dir }}/bin/runner"
+  when: not runner_exists.stat.exists
+
+- name: Validate runner hash
+  ansible.builtin.shell:
+    cmd: |
+      echo "{{ github_runner_sha256 }}  actions-runner-linux-x64-{{ github_runner_version }}.tar.gz" | sha256sum -c
+    executable: /bin/bash
+    chdir: /tmp
+  when: not runner_exists.stat.exists
+  register: hash_validation
+  failed_when: hash_validation.rc != 0
+  changed_when: false
+
+- name: Configure runner
+  ansible.builtin.shell:
+    cmd: |
+      printf '\n' | ./config.sh --url {{ github_runner_url }} --token {{ github_runner_token }} --name {{ github_runner_name }} --labels {{ github_runner_labels }}
+    executable: /bin/bash
+    chdir: "{{ github_runner_install_dir }}"
+  become: true
+  become_user: runner
+  when: not runner_exists.stat.exists
+  register: runner_config
+
+- name: Create runner service file
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/actions.runner.{{ github_runner_name }}.service
+    content: |
+      [Unit]
+      Description=GitHub Actions Runner ({{ github_runner_name }})
+      After=network.target
+
+      [Service]
+      ExecStart={{ github_runner_install_dir }}/run.sh
+      WorkingDirectory={{ github_runner_install_dir }}
+      Restart=always
+      RestartSec=10
+      User=runner
+      Group=runner
+
+      [Install]
+      WantedBy=multi-user.target
+  when: not runner_exists.stat.exists
+
+- name: Enable and start runner service
+  ansible.builtin.systemd_service:
+    name: "actions.runner.{{ github_runner_name }}"
+    state: started
+    enabled: true
+    daemon_reload: true
+  when: not runner_exists.stat.exists
+
+- name: Display runner info
+  ansible.builtin.debug:
+    msg: |
+      GitHub Runner configured successfully!
+      Name: {{ github_runner_name }}
+      Labels: {{ github_runner_labels }}
+      URL: {{ github_runner_url }}
+      Installation: {{ github_runner_install_dir }}
+  when: not runner_exists.stat.exists
