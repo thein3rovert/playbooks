@@ -86,3 +86,20 @@
       ansible.builtin.import_role:
         name: linkding
       tags: linkding
+
+# K3S Cluster Monitoring and Reporting
+- name: K3S Cluster Inventory
+  hosts: k3s_nodes
+  gather_facts: true
+  become: true
+  vars_files:
+    - ./vars/vault.yml
+
+  tasks:
+    - name: Run K3S Inventory Role
+      ansible.builtin.import_role:
+        name: k3s-inventory
+      tags:
+        - k3s-inventory
+        - monitoring
+        - reports

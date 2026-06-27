@@ -1,0 +1,61 @@
+---
+# Generate summary and alerts from collected data
+
+- name: Calculate cluster-wide summary statistics
+  ansible.builtin.set_fact:
+    cluster_summary:
+      generated_at: "{{ report_timestamp }}"
+      total_nodes: "{{ cluster_report.nodes | length }}"
+      total_log_size_mb: "{{ cluster_report.nodes | dict2items | map(attribute='value.log_info.total_var_log_mb') | map('int') | sum }}"
+      total_pod_logs_mb: "{{ cluster_report.nodes | dict2items | map(attribute='value.log_info.pod_logs_total_mb') | map('int') | sum }}"
+      total_system_logs_mb: "{{ cluster_report.nodes | dict2items | map(attribute='value.log_info.system_logs_total_mb') | map('int') | sum }}"
+
+- name: Collect all alerts from all nodes
+  ansible.builtin.set_fact:
+    all_alerts: "{{ cluster_report.nodes | dict2items | map(attribute='value.log_info.alerts') | flatten }}"
+
+- name: Count alert severities
+  ansible.builtin.set_fact:
+    critical_alerts: "{{ all_alerts | selectattr('severity', 'equalto', 'critical') | list }}"
+    warning_alerts: "{{ all_alerts | selectattr('severity', 'equalto', 'warning') | list }}"
+
+- name: Check for ArgoCD sync issues
+  ansible.builtin.set_fact:
+    argocd_issues: "{{ cluster_report.argocd_apps | default([]) | selectattr('sync_status', 'ne', 'Synced') | list }}"
+
+- name: Check for unhealthy deployments
+  ansible.builtin.set_fact:
+    unhealthy_deployments: "{{ cluster_report.deployments | default([]) | selectattr('ready', 'ne', 'replicas') | list }}"
+
+- name: Build comprehensive alert summary
+  ansible.builtin.set_fact:
+    alert_summary:
+      total_alerts: "{{ all_alerts | length }}"
+      critical_count: "{{ critical_alerts | length }}"
+      warning_count: "{{ warning_alerts | length }}"
+      critical_alerts: "{{ critical_alerts }}"
+      warning_alerts: "{{ warning_alerts }}"
+      argocd_out_of_sync: "{{ argocd_issues }}"
+      unhealthy_deployments: "{{ unhealthy_deployments }}"
+      problem_pods: "{{ cluster_report.problem_pods | default([]) }}"
+
+- name: Add summary to cluster report
+  ansible.builtin.set_fact:
+    cluster_report: "{{ cluster_report | combine({
+      'summary': cluster_summary,
+      'alerts': alert_summary
+    }, recursive=True) }}"
+
+- name: Display summary
+  ansible.builtin.debug:
+    msg:
+      - "=== K3S Cluster Summary ==="
+      - "Nodes: {{ cluster_summary.total_nodes }}"
+      - "Total Pods: {{ cluster_report.cluster_info.total_pods }}"
+      - "Total Namespaces: {{ cluster_report.cluster_info.total_namespaces }}"
+      - "Total Log Size: {{ cluster_summary.total_log_size_mb }}MB"
+      - "  - Pod Logs: {{ cluster_summary.total_pod_logs_mb }}MB"
+      - "  - System Logs: {{ cluster_summary.total_system_logs_mb }}MB"
+      - "Alerts: {{ alert_summary.critical_count }} critical, {{ alert_summary.warning_count }} warnings"
+      - "Problem Pods: {{ alert_summary.problem_pods | length }}"
+      - "ArgoCD Out of Sync: {{ alert_summary.argocd_out_of_sync | length }}"

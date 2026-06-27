@@ -1,0 +1,82 @@
+---
+# Gather node-specific information (runs on each node)
+
+- name: Get node resource usage
+  ansible.builtin.shell: |
+    kubectl top node {{ inventory_hostname }} --no-headers
+  register: node_metrics
+  changed_when: false
+  delegate_to: "{{ groups['k3s_server'][0] }}"
+  ignore_errors: true
+
+- name: Parse node metrics
+  ansible.builtin.set_fact:
+    node_metrics_parsed: "{{ node_metrics.stdout.split() if node_metrics.rc == 0 and node_metrics.stdout != '' else [] }}"
+
+- name: Set node metric values
+  ansible.builtin.set_fact:
+    node_cpu: "{{ node_metrics_parsed[1] if node_metrics_parsed | length > 1 else 'N/A' }}"
+    node_cpu_percent: "{{ node_metrics_parsed[2] if node_metrics_parsed | length > 2 else 'N/A' }}"
+    node_memory: "{{ node_metrics_parsed[3] if node_metrics_parsed | length > 3 else 'N/A' }}"
+    node_memory_percent: "{{ node_metrics_parsed[4] if node_metrics_parsed | length > 4 else 'N/A' }}"
+
+- name: Get disk usage
+  ansible.builtin.shell: |
+    df -h / /var/lib/rancher /var/log --output=source,size,used,avail,pcent,target | tail -n +2
+  register: disk_usage
+  changed_when: false
+
+- name: Get system info
+  ansible.builtin.setup:
+    gather_subset:
+      - hardware
+      - network
+      - virtual
+
+- name: Check K3S service status
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+  register: k3s_service_status
+  loop: "{{ k3s_services }}"
+  ignore_errors: true
+
+- name: Get K3S service journal disk usage
+  ansible.builtin.shell: |
+    journalctl --disk-usage | grep -oP '\d+\.\d+\w+'
+  register: journal_disk_usage
+  changed_when: false
+  ignore_errors: true
+
+- name: Count K3S service log entries (errors/warnings)
+  ansible.builtin.shell: |
+    journalctl -u {{ item }} --since "24 hours ago" -p warning -o json | wc -l
+  register: k3s_log_warnings
+  loop: "{{ k3s_services }}"
+  changed_when: false
+  ignore_errors: true
+
+- name: Store node information
+  ansible.builtin.set_fact:
+    node_info:
+      hostname: "{{ inventory_hostname }}"
+      ansible_host: "{{ ansible_host }}"
+      os: "{{ ansible_facts.distribution }} {{ ansible_facts.distribution_version }}"
+      kernel: "{{ ansible_facts.kernel }}"
+      architecture: "{{ ansible_facts.architecture }}"
+      cpu_cores: "{{ ansible_facts.processor_vcpus }}"
+      memory_total: "{{ ansible_facts.memtotal_mb }}MB"
+      memory_free: "{{ ansible_facts.memfree_mb }}MB"
+      uptime: "{{ ansible_facts.uptime_seconds | int / 86400 | round(1) }} days"
+      metrics:
+        cpu_usage: "{{ node_cpu }}"
+        cpu_percent: "{{ node_cpu_percent }}"
+        memory_usage: "{{ node_memory }}"
+        memory_percent: "{{ node_memory_percent }}"
+      disk_usage: "{{ disk_usage.stdout_lines }}"
+      k3s_services: "{{ k3s_service_status.results | json_query('[*].{name: item, state: status.ActiveState, enabled: status.UnitFileState}') }}"
+      journal_disk_usage: "{{ journal_disk_usage.stdout | default('N/A') }}"
+      k3s_warnings_24h: "{{ k3s_log_warnings.results | json_query('[*].{service: item, warnings: stdout}') }}"
+
+- name: Add node info to cluster report
+  ansible.builtin.set_fact:
+    cluster_report: "{{ cluster_report | combine({'nodes': cluster_report.nodes | combine({inventory_hostname: node_info})}, recursive=True) }}"

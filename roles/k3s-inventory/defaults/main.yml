@@ -1,0 +1,39 @@
+---
+# K3S Inventory Role - Default Variables
+
+# Output configuration
+report_output_dir: "/tmp/k3s-reports"
+report_timestamp: "{{ ansible_facts.date_time.iso8601_basic_short }}"
+report_format: "json"  # json, yaml, or both
+
+# Kubeconfig location (leave empty to use default ~/.kube/config or KUBECONFIG env)
+kubeconfig_path: "/etc/rancher/k3s/k3s.yaml"
+
+# Log size thresholds (in MB)
+log_size_warning_threshold: 500
+log_size_critical_threshold: 1000
+
+# Namespaces to focus on (empty list means all namespaces)
+monitored_namespaces: []
+
+# Pod log paths on nodes
+pod_log_paths:
+  - "/var/log/pods"
+  - "/var/log/containers"
+
+# System log paths
+system_log_paths:
+  - "/var/log/syslog"
+  - "/var/log/kern.log"
+  - "/var/log/daemon.log"
+
+# K3S service logs
+k3s_services:
+  - "k3s"
+  - "k3s-agent"
+
+# Clean up old reports (days to keep)
+report_retention_days: 30
+
+# Top N largest log consumers to report
+top_log_consumers: 10

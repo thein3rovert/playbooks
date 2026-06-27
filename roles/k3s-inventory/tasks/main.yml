@@ -1,0 +1,67 @@
+---
+# K3S Cluster Inventory - Main Tasks
+
+- name: Create report output directory
+  ansible.builtin.file:
+    path: "{{ report_output_dir }}"
+    state: directory
+    mode: '0755'
+  when: inventory_hostname == groups['k3s_server'][0]
+  run_once: true
+
+- name: Initialize report data structure
+  ansible.builtin.set_fact:
+    cluster_report:
+      timestamp: "{{ report_timestamp }}"
+      cluster_name: "k3s-cluster"
+      nodes: {}
+      summary: {}
+
+- name: Gather cluster-wide information
+  ansible.builtin.include_tasks: gather-cluster-info.yml
+  when: inventory_hostname == groups['k3s_server'][0]
+  run_once: true
+
+- name: Gather node-specific information
+  ansible.builtin.include_tasks: gather-node-info.yml
+
+- name: Gather log sizes from all nodes
+  ansible.builtin.include_tasks: gather-log-sizes.yml
+
+- name: Generate summary and alerts
+  ansible.builtin.include_tasks: generate-summary.yml
+  when: inventory_hostname == groups['k3s_server'][0]
+  run_once: true
+
+- name: Save report to file
+  ansible.builtin.copy:
+    content: "{{ cluster_report | to_nice_json }}"
+    dest: "{{ report_output_dir }}/k3s-report-{{ report_timestamp }}.json"
+    mode: '0644'
+  when: inventory_hostname == groups['k3s_server'][0]
+  run_once: true
+
+- name: Display report location
+  ansible.builtin.debug:
+    msg: "K3S cluster report saved to: {{ report_output_dir }}/k3s-report-{{ report_timestamp }}.json"
+  when: inventory_hostname == groups['k3s_server'][0]
+  run_once: true
+
+- name: Clean up old reports
+  ansible.builtin.find:
+    paths: "{{ report_output_dir }}"
+    patterns: "k3s-report-*.json"
+    age: "{{ report_retention_days }}d"
+  register: old_reports
+  when: inventory_hostname == groups['k3s_server'][0]
+  run_once: true
+
+- name: Remove old reports
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ old_reports.files }}"
+  when:
+    - inventory_hostname == groups['k3s_server'][0]
+    - old_reports.files | length > 0
+  run_once: true

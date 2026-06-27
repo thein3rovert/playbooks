@@ -1,0 +1,90 @@
+---
+# Gather log sizes from all nodes
+
+- name: Get pod logs directory size
+  ansible.builtin.shell: |
+    du -sm {{ item }} 2>/dev/null | awk '{print $1}'
+  register: pod_log_size
+  loop: "{{ pod_log_paths }}"
+  changed_when: false
+  ignore_errors: true
+
+- name: Get system log sizes
+  ansible.builtin.shell: |
+    if [ -f "{{ item }}" ]; then
+      du -sm "{{ item }}" | awk '{print $1}'
+    else
+      echo "0"
+    fi
+  register: system_log_size
+  loop: "{{ system_log_paths }}"
+  changed_when: false
+  ignore_errors: true
+
+- name: Get total log directory size
+  ansible.builtin.shell: |
+    du -sm /var/log 2>/dev/null | awk '{print $1}'
+  register: total_log_size
+  changed_when: false
+  ignore_errors: true
+
+- name: Find largest pod log directories
+  ansible.builtin.shell: |
+    du -sm /var/log/pods/*/* 2>/dev/null | sort -rn | head -{{ top_log_consumers }} | awk '{print $2"|"$1}'
+  register: largest_pod_logs
+  changed_when: false
+  ignore_errors: true
+
+- name: Find largest container logs
+  ansible.builtin.shell: |
+    du -sm /var/log/containers/* 2>/dev/null | sort -rn | head -{{ top_log_consumers }} | awk '{print $2"|"$1}'
+  register: largest_container_logs
+  changed_when: false
+  ignore_errors: true
+
+- name: Parse largest pod logs
+  ansible.builtin.set_fact:
+    top_pod_logs: "{{ largest_pod_logs.stdout_lines | map('split', '|') | map('list') | list }}"
+  when: largest_pod_logs.stdout_lines | length > 0
+
+- name: Parse largest container logs
+  ansible.builtin.set_fact:
+    top_container_logs: "{{ largest_container_logs.stdout_lines | map('split', '|') | map('list') | list }}"
+  when: largest_container_logs.stdout_lines | length > 0
+
+- name: Check if any logs exceed thresholds
+  ansible.builtin.set_fact:
+    log_alerts: []
+
+- name: Add critical alerts for large logs
+  ansible.builtin.set_fact:
+    log_alerts: "{{ log_alerts + [{'severity': 'critical', 'node': inventory_hostname, 'path': item[0], 'size_mb': item[1] | int}] }}"
+  loop: "{{ top_pod_logs | default([]) }}"
+  when: 
+    - top_pod_logs is defined
+    - item[1] | int > log_size_critical_threshold
+
+- name: Add warning alerts for large logs
+  ansible.builtin.set_fact:
+    log_alerts: "{{ log_alerts + [{'severity': 'warning', 'node': inventory_hostname, 'path': item[0], 'size_mb': item[1] | int}] }}"
+  loop: "{{ top_pod_logs | default([]) }}"
+  when: 
+    - top_pod_logs is defined
+    - item[1] | int > log_size_warning_threshold
+    - item[1] | int <= log_size_critical_threshold
+
+- name: Store log size information
+  ansible.builtin.set_fact:
+    log_info:
+      pod_logs_total_mb: "{{ pod_log_size.results | map(attribute='stdout') | map('int') | sum }}"
+      container_logs_path_sizes: "{{ pod_log_size.results | json_query('[*].{path: item, size_mb: stdout}') }}"
+      system_logs_total_mb: "{{ system_log_size.results | map(attribute='stdout') | map('int') | sum }}"
+      system_log_sizes: "{{ system_log_size.results | json_query('[*].{path: item, size_mb: stdout}') }}"
+      total_var_log_mb: "{{ total_log_size.stdout | default('0') | int }}"
+      top_pod_logs: "{{ top_pod_logs | default([]) | map('join', ' MB: ') | list }}"
+      top_container_logs: "{{ top_container_logs | default([]) | map('join', ' MB: ') | list }}"
+      alerts: "{{ log_alerts }}"
+
+- name: Add log info to node data in cluster report
+  ansible.builtin.set_fact:
+    cluster_report: "{{ cluster_report | combine({'nodes': cluster_report.nodes | combine({inventory_hostname: cluster_report.nodes[inventory_hostname] | combine({'log_info': log_info})})}, recursive=True) }}"

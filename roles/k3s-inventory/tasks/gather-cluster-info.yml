@@ -1,0 +1,120 @@
+---
+# Gather cluster-wide information using kubectl
+
+- name: Set kubeconfig environment
+  ansible.builtin.set_fact:
+    kubectl_env:
+      KUBECONFIG: "{{ kubeconfig_path }}"
+  when: kubeconfig_path != ""
+
+- name: Get cluster nodes
+  kubernetes.core.k8s_info:
+    kind: Node
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_nodes
+  become: true
+
+- name: Get all namespaces
+  kubernetes.core.k8s_info:
+    kind: Namespace
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_namespaces
+  become: true
+
+- name: Get all pods
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: ""
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_pods
+  become: true
+
+- name: Get all PVCs
+  kubernetes.core.k8s_info:
+    kind: PersistentVolumeClaim
+    namespace: ""
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_pvcs
+  become: true
+
+- name: Get all services
+  kubernetes.core.k8s_info:
+    kind: Service
+    namespace: ""
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_services
+  become: true
+
+- name: Get all ingresses
+  kubernetes.core.k8s_info:
+    kind: Ingress
+    namespace: ""
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_ingresses
+  become: true
+
+- name: Get all deployments
+  kubernetes.core.k8s_info:
+    kind: Deployment
+    namespace: ""
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_deployments
+  become: true
+
+- name: Get all statefulsets
+  kubernetes.core.k8s_info:
+    kind: StatefulSet
+    namespace: ""
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: cluster_statefulsets
+  become: true
+
+- name: Check for ArgoCD applications
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    namespace: argocd
+    kubeconfig: "{{ kubeconfig_path if kubeconfig_path != '' else omit }}"
+  register: argocd_apps
+  ignore_errors: true
+  become: true
+
+- name: Get recent cluster events
+  ansible.builtin.shell: |
+    kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -50
+  register: cluster_events
+  changed_when: false
+  environment: "{{ kubectl_env | default({}) }}"
+  become: true
+
+- name: Process cluster data
+  ansible.builtin.set_fact:
+    cluster_report: "{{ cluster_report | combine({
+      'cluster_info': {
+        'total_nodes': cluster_nodes.resources | length,
+        'total_namespaces': cluster_namespaces.resources | length,
+        'total_pods': cluster_pods.resources | length,
+        'total_pvcs': cluster_pvcs.resources | length,
+        'total_services': cluster_services.resources | length,
+        'total_ingresses': cluster_ingresses.resources | length,
+        'nodes': cluster_nodes.resources | map(attribute='metadata.name') | list,
+        'namespaces': cluster_namespaces.resources | map(attribute='metadata.name') | list
+      },
+      'all_pods': cluster_pods.resources | json_query('[*].{name: metadata.name, namespace: metadata.namespace, status: status.phase, node: spec.nodeName}'),
+      'pvcs': cluster_pvcs.resources | json_query('[*].{name: metadata.name, namespace: metadata.namespace, capacity: spec.resources.requests.storage, storageClass: spec.storageClassName}'),
+      'ingresses': cluster_ingresses.resources | json_query('[*].{name: metadata.name, namespace: metadata.namespace, hosts: spec.rules[*].host}'),
+      'deployments': cluster_deployments.resources | json_query('[*].{name: metadata.name, namespace: metadata.namespace, replicas: spec.replicas, ready: status.readyReplicas}'),
+      'statefulsets': cluster_statefulsets.resources | json_query('[*].{name: metadata.name, namespace: metadata.namespace, replicas: spec.replicas, ready: status.readyReplicas}'),
+      'argocd_apps': argocd_apps.resources | default([]) | json_query('[*].{name: metadata.name, sync_status: status.sync.status, health_status: status.health.status}'),
+      'recent_events': cluster_events.stdout_lines | default([])
+    }, recursive=True) }}"
+
+- name: Identify problem pods
+  ansible.builtin.set_fact:
+    problem_pods: "{{ cluster_pods.resources | selectattr('status.phase', 'in', ['Failed', 'Unknown', 'Pending']) | list }}"
+
+- name: Add problem pods to report
+  ansible.builtin.set_fact:
+    cluster_report: "{{ cluster_report | combine({
+      'problem_pods': problem_pods | json_query('[*].{name: metadata.name, namespace: metadata.namespace, status: status.phase, reason: status.reason}')
+    }, recursive=True) }}"
