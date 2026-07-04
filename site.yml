@@ -51,6 +51,11 @@
         name: github-runner
       tags: github-runner
 
+    - name: Run Kestra Role
+      ansible.builtin.import_role:
+        name: kestra
+      tags: kestra
+
 # Kubernetes deployments
 # Requirements: ansible-galaxy collection install kubernetes.core
 - name: Deploy Kubernetes Applications

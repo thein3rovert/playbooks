@@ -196,3 +196,12 @@ vault-recover:
 # [group('github-runner')]
 # setup:
 #     GITHUB_RUNNER_TOKEN="{{ env.GITHUB_RUNNER_TOKEN }}" ansible-playbook -i inventory/production.yml playbooks/github-runner.yml --limit github-runner --extra-vars "ansible_python_interpreter=/usr/bin/python3"
+
+# ==============================
+#       KESTRA
+# ==============================
+
+# Restart Kestra service
+[group('kestra')]
+kestra-restart:
+    ansible-playbook -i inventory/production.yml site.yml --tags kestra --limit marcus
