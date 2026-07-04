@@ -131,6 +131,44 @@ rekey:
     ansible-vault rekey vars/vault.yml
 
 # ==============================
+#       HASHICORP VAULT
+# ==============================
+
+# Check Vault status
+[group('hashicorp-vault')]
+vault-status:
+    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=status"
+
+# Restart Vault service
+[group('hashicorp-vault')]
+vault-restart:
+    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=restart"
+
+# Unseal Vault (requires encrypted vault-secrets.yml)
+[group('hashicorp-vault')]
+vault-unseal:
+    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=unseal" -e "@vars/vault-secrets.yml" --vault-password-file .vault_pass
+
+# Restart and unseal Vault in one operation
+[group('hashicorp-vault')]
+vault-restart-unseal:
+    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=restart_unseal" -e "@vars/vault-secrets.yml" --vault-password-file .vault_pass
+
+# Clean up disk space on Vault server
+[group('hashicorp-vault')]
+vault-disk-cleanup:
+    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=disk_cleanup"
+
+# Full recovery: cleanup, restart, and unseal
+[group('hashicorp-vault')]
+vault-recover:
+    @echo "🔧 Step 1: Cleaning up disk space..."
+    @ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=disk_cleanup"
+    @echo "🔄 Step 2: Restarting and unsealing Vault..."
+    @ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=restart_unseal" -e "@vars/vault-secrets.yml" --vault-password-file .vault_pass
+    @echo "✅ Vault recovery complete!"
+
+# ==============================
 #       GITHUB RUNNER
 # ==============================
 
