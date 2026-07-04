@@ -1,0 +1,15 @@
+---
+# Restart Kestra service using generic systemd role
+- name: Restart and enable Kestra service
+  ansible.builtin.include_role:
+    name: systemd
+  vars:
+    systemd_service_name: "{{ kestra_service_name }}"
+    systemd_service_state: restarted
+    systemd_service_enabled: true
+    systemd_wait_for_port: "{{ kestra_port }}"
+    systemd_wait_timeout: 60
+
+- name: Display Kestra restart status
+  ansible.builtin.debug:
+    msg: "Kestra service restarted successfully"

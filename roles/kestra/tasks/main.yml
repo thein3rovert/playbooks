@@ -1,0 +1,5 @@
+---
+# Kestra management tasks
+- name: Include restart task
+  ansible.builtin.include_tasks: restart.yml
+  tags: restart

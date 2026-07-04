@@ -1,0 +1,4 @@
+---
+# Kestra role defaults
+kestra_service_name: "podman-kestra"
+kestra_port: 8080
