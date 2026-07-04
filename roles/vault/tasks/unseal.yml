@@ -1,0 +1,39 @@
+---
+# Unseal Vault with provided keys
+- name: Check if unseal keys are provided
+  ansible.builtin.fail:
+    msg: "vault_unseal_keys must be provided. Use --extra-vars or vault file."
+  when: vault_unseal_keys | length == 0
+
+- name: Check Vault seal status
+  ansible.builtin.command: vault status -format=json
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  register: vault_status_json
+  failed_when: false
+  changed_when: false
+
+- name: Parse seal status
+  ansible.builtin.set_fact:
+    vault_sealed: "{{ (vault_status_json.stdout | from_json).sealed }}"
+  when: vault_status_json.rc == 0
+
+- name: Unseal Vault with each key
+  ansible.builtin.command: "vault operator unseal {{ item }}"
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  loop: "{{ vault_unseal_keys }}"
+  no_log: true
+  when: vault_sealed | default(true)
+  register: unseal_result
+
+- name: Verify Vault is unsealed
+  ansible.builtin.command: vault status
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  register: final_status
+  changed_when: false
+
+- name: Display final Vault status
+  ansible.builtin.debug:
+    msg: "{{ final_status.stdout_lines }}"

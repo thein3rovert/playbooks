@@ -1,0 +1,26 @@
+---
+# Vault management tasks
+- name: Include restart task
+  ansible.builtin.include_tasks: restart.yml
+  when: vault_action == "restart"
+  tags: restart
+
+- name: Include unseal task
+  ansible.builtin.include_tasks: unseal.yml
+  when: vault_action == "unseal"
+  tags: unseal
+
+- name: Include restart and unseal task
+  ansible.builtin.include_tasks: restart_and_unseal.yml
+  when: vault_action == "restart_unseal"
+  tags: restart_unseal
+
+- name: Include status task
+  ansible.builtin.include_tasks: status.yml
+  when: vault_action == "status"
+  tags: status
+
+- name: Include disk cleanup task
+  ansible.builtin.include_tasks: disk_cleanup.yml
+  when: vault_action == "disk_cleanup"
+  tags: disk_cleanup

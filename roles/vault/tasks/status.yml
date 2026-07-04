@@ -1,0 +1,31 @@
+---
+# Check Vault status
+- name: Get Vault service status
+  ansible.builtin.systemd:
+    name: "{{ vault_service_name }}"
+  register: vault_service_status
+
+- name: Display service status
+  ansible.builtin.debug:
+    msg: "Vault service is {{ vault_service_status.status.ActiveState }}"
+
+- name: Get Vault status
+  ansible.builtin.command: vault status
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  register: vault_status_output
+  failed_when: false
+  changed_when: false
+
+- name: Display Vault status
+  ansible.builtin.debug:
+    msg: "{{ vault_status_output.stdout_lines }}"
+
+- name: Check disk space
+  ansible.builtin.shell: df -h / && echo "---" && du -sh /opt/vault/* && echo "---" && journalctl --disk-usage
+  register: disk_info
+  changed_when: false
+
+- name: Display disk information
+  ansible.builtin.debug:
+    msg: "{{ disk_info.stdout_lines }}"

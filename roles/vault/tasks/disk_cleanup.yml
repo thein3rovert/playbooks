@@ -1,0 +1,77 @@
+---
+# Disk cleanup tasks to prevent Vault failures
+- name: Check current disk usage
+  ansible.builtin.shell: df / | tail -1 | awk '{print $5}' | sed 's/%//'
+  register: disk_usage_before
+  changed_when: false
+
+- name: Display current disk usage
+  ansible.builtin.debug:
+    msg: "Current disk usage: {{ disk_usage_before.stdout }}%"
+
+- name: Clean systemd journal logs (keep last 50MB)
+  ansible.builtin.command: journalctl --vacuum-size=50M
+  become: true
+  register: journal_cleanup
+
+- name: Clean apt cache
+  ansible.builtin.command: apt-get clean
+  become: true
+  when: ansible_os_family == "Debian"
+
+- name: Remove old compressed logs
+  ansible.builtin.find:
+    paths: /var/log
+    patterns: "*.gz,*.old"
+    recurse: true
+  register: old_logs
+
+- name: Delete old compressed logs
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ old_logs.files }}"
+  become: true
+  when: old_logs.files | length > 0
+
+- name: Check disk usage after cleanup
+  ansible.builtin.shell: df / | tail -1 | awk '{print $5}' | sed 's/%//'
+  register: disk_usage_after
+  changed_when: false
+
+- name: Display cleanup results
+  ansible.builtin.debug:
+    msg: "Disk usage: {{ disk_usage_before.stdout }}% -> {{ disk_usage_after.stdout }}% (freed {{ disk_usage_before.stdout | int - disk_usage_after.stdout | int }}%)"
+
+- name: Configure journald to prevent log buildup
+  ansible.builtin.blockinfile:
+    path: /etc/systemd/journald.conf
+    block: |
+      SystemMaxUse=50M
+      SystemKeepFree=200M
+      MaxRetentionSec=7day
+    marker: "# {mark} ANSIBLE MANAGED - Vault disk protection"
+    backup: true
+  become: true
+  notify: Restart journald
+
+- name: Create disk monitoring script
+  ansible.builtin.copy:
+    dest: /usr/local/bin/vault-disk-check.sh
+    mode: '0755'
+    content: |
+      #!/bin/bash
+      # Disk space monitoring for Vault
+      DISK_USAGE=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
+      if [ $DISK_USAGE -gt 85 ]; then
+          echo "WARNING: Disk usage at ${DISK_USAGE}%" | logger -t vault-disk-check
+          journalctl --vacuum-size=50M
+      fi
+  become: true
+
+- name: Add cron job for disk monitoring
+  ansible.builtin.cron:
+    name: "Vault disk space check"
+    minute: "0"
+    job: "/usr/local/bin/vault-disk-check.sh"
+  become: true

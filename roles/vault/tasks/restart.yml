@@ -1,0 +1,31 @@
+---
+# Restart Vault service
+- name: Enable Vault service
+  ansible.builtin.systemd:
+    name: "{{ vault_service_name }}"
+    enabled: true
+  become: true
+
+- name: Restart Vault service
+  ansible.builtin.systemd:
+    name: "{{ vault_service_name }}"
+    state: restarted
+  become: true
+
+- name: Wait for Vault to start
+  ansible.builtin.wait_for:
+    port: 8200
+    delay: 2
+    timeout: 30
+
+- name: Get Vault status
+  ansible.builtin.command: vault status
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  register: vault_status_output
+  failed_when: false
+  changed_when: false
+
+- name: Display Vault status
+  ansible.builtin.debug:
+    msg: "{{ vault_status_output.stdout_lines }}"

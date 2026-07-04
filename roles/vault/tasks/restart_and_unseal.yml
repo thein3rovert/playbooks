@@ -1,0 +1,56 @@
+---
+# Restart and unseal Vault in one operation
+# TODO: Create a dedicated roles for the following
+# - Check disk space or disk space management (Then it cabn reusable)
+# - Move systemd into dedicted roles or modules so it can be reusable
+- name: Check disk space before restart
+  ansible.builtin.shell: df / | tail -1 | awk '{print $5}' | sed 's/%//'
+  register: disk_usage
+  changed_when: false
+
+- name: Warn if disk space is low
+  ansible.builtin.debug:
+    msg: "WARNING: Disk usage is {{ disk_usage.stdout }}%. Consider running disk_cleanup."
+  when: disk_usage.stdout | int > 85
+
+- name: Enable Vault service
+  ansible.builtin.systemd:
+    name: "{{ vault_service_name }}"
+    enabled: true
+  become: true
+
+- name: Restart Vault service
+  ansible.builtin.systemd:
+    name: "{{ vault_service_name }}"
+    state: restarted
+  become: true
+
+- name: Wait for Vault to start
+  ansible.builtin.wait_for:
+    port: 8200
+    delay: 2
+    timeout: 30
+
+- name: Check if unseal keys are provided
+  ansible.builtin.fail:
+    msg: "vault_unseal_keys must be provided. Use --extra-vars or vault file."
+  when: vault_unseal_keys | length == 0
+
+- name: Unseal Vault with each key
+  ansible.builtin.command: "vault operator unseal {{ item }}"
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  loop: "{{ vault_unseal_keys }}"
+  no_log: true
+  register: unseal_result
+
+- name: Verify Vault is unsealed
+  ansible.builtin.command: vault status
+  environment:
+    VAULT_ADDR: "{{ vault_addr }}"
+  register: final_status
+  changed_when: false
+
+- name: Display final Vault status
+  ansible.builtin.debug:
+    msg: "{{ final_status.stdout_lines }}"

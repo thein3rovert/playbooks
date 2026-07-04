@@ -1,0 +1,9 @@
+---
+# Vault role defaults
+vault_addr: "http://127.0.0.1:8200"
+vault_config_path: "/etc/vault.d/vault.hcl"
+vault_service_name: "vault"
+
+# Unseal keys should be provided via extra-vars or vault file
+# Example: ansible-playbook vault-manage.yml --extra-vars "vault_unseal_keys=['key1','key2','key3']"
+vault_unseal_keys: []

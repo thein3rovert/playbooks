@@ -1,0 +1,28 @@
+---
+# Vault Management Playbook
+# Handles restart, unseal, status, and disk cleanup for Vault servers
+#
+# Usage examples:
+#   ansible-playbook vault-manage.yml -e "vault_action=status"
+#   ansible-playbook vault-manage.yml -e "vault_action=disk_cleanup"
+#   ansible-playbook vault-manage.yml -e "vault_action=restart"
+#   ansible-playbook vault-manage.yml -e "vault_action=unseal vault_unseal_keys=['key1','key2','key3']"
+#   ansible-playbook vault-manage.yml -e "vault_action=restart_unseal vault_unseal_keys=['key1','key2','key3']"
+#   ansible-playbook vault-manage.yml -e "vault_action=restart_unseal" --ask-vault-pass  # if keys stored in vault.yml
+
+- name: Manage Vault Server
+  hosts: becca
+  gather_facts: true
+  become: true
+  vars:
+    vault_action: "status"  # Default action: status, restart, unseal, restart_unseal, disk_cleanup
+  
+  pre_tasks:
+    - name: Validate vault_action
+      ansible.builtin.assert:
+        that:
+          - vault_action in ['status', 'restart', 'unseal', 'restart_unseal', 'disk_cleanup']
+        fail_msg: "Invalid vault_action. Must be one of: status, restart, unseal, restart_unseal, disk_cleanup"
+  
+  roles:
+    - role: vault
