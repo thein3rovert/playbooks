@@ -4,6 +4,7 @@
   ansible.builtin.systemd:
     name: "{{ vault_service_name }}"
   register: vault_service_status
+  become: true
 
 - name: Display service status
   ansible.builtin.debug:

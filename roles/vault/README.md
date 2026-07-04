@@ -11,6 +11,51 @@ Manages HashiCorp Vault operations including restart, unseal, status checks, and
 - 🧹 Disk cleanup to prevent storage issues
 - ⚙️ Automatic journald configuration to prevent log buildup
 - 🔍 Hourly disk monitoring with auto-cleanup
+- ♻️ **Reusable design** - Uses generic `systemd` role for service management
+
+## Architecture
+
+This role follows **modular design principles**:
+
+```
+vault role
+├── Service Management → Delegates to systemd role (reusable)
+├── Vault-specific logic → unseal, status checks (unique)
+└── Disk management → cleanup tasks (could be extracted)
+```
+
+### Why This Matters
+
+**Before**: Each role duplicated systemd operations
+```yaml
+# Duplicated in vault, backup, traefik, etc.
+- name: Restart service
+  systemd: name=myservice state=restarted
+- name: Enable service  
+  systemd: name=myservice enabled=true
+- name: Wait for port
+  wait_for: port=8080
+```
+
+**After**: Single source of truth
+```yaml
+# Vault role calls systemd role
+- include_role: 
+    name: systemd
+  vars:
+    systemd_service_name: vault
+    systemd_service_state: restarted
+    systemd_service_enabled: true
+    systemd_wait_for_port: 8200
+```
+
+### Benefits
+
+- ✅ **DRY**: No code duplication
+- ✅ **Consistency**: Same behavior across all services  
+- ✅ **Testability**: Test systemd logic once
+- ✅ **Maintainability**: Update in one place
+- ✅ **Composability**: Mix and match roles
 
 ## Usage
 
@@ -69,33 +114,6 @@ ansible-playbook vault-manage.yml \
   -e "vault_unseal_keys=['key1','key2','key3']"
 ```
 
-## Preventing Disk Issues
-
-The disk cleanup action:
-- Cleans systemd journal logs (keeps 50MB)
-- Removes old compressed logs
-- Configures journald limits permanently
-- Sets up hourly monitoring cron job
-
-Run after Vault failure:
-```bash
-ansible-playbook vault-manage.yml -e "vault_action=disk_cleanup"
-ansible-playbook vault-manage.yml -e "vault_action=restart_unseal" --ask-vault-pass
-```
-
-## Root Cause Analysis
-
-Your Vault was dying due to **disk space exhaustion** (97% full). The main culprits:
-- `/var/log/journal`: 154MB of systemd logs
-- `/var/cache`: 134MB of apt cache
-- Small 2GB root partition
-
-The disk cleanup role prevents this by:
-1. Limiting journal to 50MB max
-2. Keeping 200MB free always
-3. Rotating logs after 7 days
-4. Hourly monitoring and auto-cleanup at 85% threshold
-
 ## Variables
 
 Set in `defaults/main.yml`:
@@ -104,16 +122,42 @@ Set in `defaults/main.yml`:
 - `vault_service_name`: Systemd service name (default: `vault`)
 - `vault_unseal_keys`: List of unseal keys (provide via vars or extra-vars)
 
-## Tags
+## Dependencies
 
-- `status`: Check Vault and service status
-- `restart`: Restart Vault service
-- `unseal`: Unseal Vault
-- `restart_unseal`: Restart and unseal in one operation
-- `disk_cleanup`: Clean up disk space
+- **systemd role**: For service management operations
+  - Used by: `restart.yml`, `restart_and_unseal.yml`
+  - Provides: start/stop/restart/enable, port waiting
+
+## Task Files
+
+| File | Purpose | Uses systemd role? |
+|------|---------|-------------------|
+| `main.yml` | Task router | No |
+| `restart.yml` | Restart service | ✅ Yes |
+| `unseal.yml` | Unseal only | No |
+| `restart_and_unseal.yml` | Combined operation | ✅ Yes |
+| `status.yml` | Health checks | No |
+| `disk_cleanup.yml` | Disk management | No |
+
+## Extending This Pattern
+
+Want to create a new service management role? Follow this pattern:
+
+```yaml
+# roles/myapp/tasks/restart.yml
+- name: Restart myapp service
+  ansible.builtin.include_role:
+    name: systemd
+  vars:
+    systemd_service_name: myapp
+    systemd_service_state: restarted
+    systemd_service_enabled: true
+    systemd_wait_for_port: 3000  # If app has a port
+```
 
 ## Requirements
 
 - HashiCorp Vault installed on target host
 - Vault CLI available in PATH
 - Root/sudo access for service management
+- **systemd role** available in `roles/systemd/`

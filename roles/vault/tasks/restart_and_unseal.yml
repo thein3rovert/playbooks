@@ -1,8 +1,5 @@
 ---
 # Restart and unseal Vault in one operation
-# TODO: Create a dedicated roles for the following
-# - Check disk space or disk space management (Then it cabn reusable)
-# - Move systemd into dedicted roles or modules so it can be reusable
 - name: Check disk space before restart
   ansible.builtin.shell: df / | tail -1 | awk '{print $5}' | sed 's/%//'
   register: disk_usage
@@ -13,23 +10,15 @@
     msg: "WARNING: Disk usage is {{ disk_usage.stdout }}%. Consider running disk_cleanup."
   when: disk_usage.stdout | int > 85
 
-- name: Enable Vault service
-  ansible.builtin.systemd:
-    name: "{{ vault_service_name }}"
-    enabled: true
-  become: true
-
-- name: Restart Vault service
-  ansible.builtin.systemd:
-    name: "{{ vault_service_name }}"
-    state: restarted
-  become: true
-
-- name: Wait for Vault to start
-  ansible.builtin.wait_for:
-    port: 8200
-    delay: 2
-    timeout: 30
+- name: Restart and enable Vault service
+  ansible.builtin.include_role:
+    name: systemd
+  vars:
+    systemd_service_name: "{{ vault_service_name }}"
+    systemd_service_state: restarted
+    systemd_service_enabled: true
+    systemd_wait_for_port: 8200
+    systemd_wait_timeout: 30
 
 - name: Check if unseal keys are provided
   ansible.builtin.fail:

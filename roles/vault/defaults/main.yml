@@ -1,6 +1,6 @@
 ---
 # Vault role defaults
-vault_addr: "http://127.0.0.1:8200"
+vault_addr: "http://192.168.0.101:8200"
 vault_config_path: "/etc/vault.d/vault.hcl"
 vault_service_name: "vault"
 

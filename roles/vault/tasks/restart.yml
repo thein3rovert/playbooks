@@ -1,22 +1,14 @@
 ---
-# Restart Vault service
-- name: Enable Vault service
-  ansible.builtin.systemd:
-    name: "{{ vault_service_name }}"
-    enabled: true
-  become: true
-
-- name: Restart Vault service
-  ansible.builtin.systemd:
-    name: "{{ vault_service_name }}"
-    state: restarted
-  become: true
-
-- name: Wait for Vault to start
-  ansible.builtin.wait_for:
-    port: 8200
-    delay: 2
-    timeout: 30
+# Restart Vault service using generic systemd role
+- name: Restart and enable Vault service
+  ansible.builtin.include_role:
+    name: systemd
+  vars:
+    systemd_service_name: "{{ vault_service_name }}"
+    systemd_service_state: restarted
+    systemd_service_enabled: true
+    systemd_wait_for_port: 8200
+    systemd_wait_timeout: 30
 
 - name: Get Vault status
   ansible.builtin.command: vault status
