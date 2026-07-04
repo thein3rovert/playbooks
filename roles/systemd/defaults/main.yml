@@ -1,4 +1,15 @@
---- 
+---
+# Generic systemd service management defaults
+# Override these when including the role
+
+systemd_service_name: ""
+systemd_service_state: "started"  # started, stopped, restarted, reloaded
+systemd_service_enabled: true     # Enable on boot
+systemd_service_daemon_reload: false  # Run daemon-reload before operation
+systemd_wait_for_port: null       # Optional: wait for port to be available
+systemd_wait_timeout: 30          # Timeout for port check
+
+# Backwards compatibility - deprecated, use include_role with vars instead
 tailscale_service_name: tailscaled
 tailscale_service_state: started
 

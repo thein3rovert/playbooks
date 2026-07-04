@@ -1,60 +1,90 @@
 ---
-# Remove these two tasks - they have no tags so always run
-# - name: Manage tailscale service
-#   ansible.builtin.systemd:
-#     name: "{{ tailscale_service_name }}"
-#     state: "{{ tailscale_service_state }}"
+# Generic systemd service management tasks
+# Call this role with include_role and pass service parameters
 
-# Remove this too - no tags
-# - name: Manage traefik service
-#   ansible.builtin.systemd:
-#     name: "{{ traefik_service_name }}"
-#     state: "{{ traefik_service_state }}"
+- name: Validate service name is provided
+  ansible.builtin.assert:
+    that:
+      - systemd_service_name is defined
+      - systemd_service_name | length > 0
+    fail_msg: "systemd_service_name must be provided when calling this role"
+  when: systemd_service_name != ""
 
-# TODO: Print out result in json or table format
-# TODO: Make playbook automation feasible using values for
-# become password
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: true
+  become: true
+  when: systemd_service_daemon_reload | bool
+
+- name: Manage systemd service - {{ systemd_service_name }}
+  ansible.builtin.systemd:
+    name: "{{ systemd_service_name }}"
+    state: "{{ systemd_service_state }}"
+    enabled: "{{ systemd_service_enabled }}"
+  become: true
+  when: systemd_service_name != ""
+  register: systemd_service_result
+
+- name: Wait for service port to be available
+  ansible.builtin.wait_for:
+    port: "{{ systemd_wait_for_port }}"
+    delay: 2
+    timeout: "{{ systemd_wait_timeout }}"
+  when: 
+    - systemd_wait_for_port is not none
+    - systemd_service_state in ['started', 'restarted']
+
+- name: Display service operation result
+  ansible.builtin.debug:
+    msg: "Service {{ systemd_service_name }} is {{ systemd_service_result.status.ActiveState | default('unknown') }}"
+  when: 
+    - systemd_service_name != ""
+    - systemd_service_result is defined
+
+# =============================================================================
+# LEGACY TASKS - Backwards compatibility for direct role calls with tags
+# =============================================================================
 
 - name: Start tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: started
-  become: yes
-  tags: [tailscale-start]
+  become: true
+  tags: [tailscale-start, never]
 
 - name: Stop tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: stopped
-  become: yes
-  ignore_errors: yes
-  tags: [tailscale-stop]
+  become: true
+  ignore_errors: true
+  tags: [tailscale-stop, never]
 
 - name: Restart tailscale service
   ansible.builtin.systemd:
     name: tailscaled
     state: restarted
-  become: yes
-  tags: [tailscale-restart]
+  become: true
+  tags: [tailscale-restart, never]
 
 - name: Start Traefik service
   ansible.builtin.systemd:
     name: traefik
     state: started
-  become: yes
-  tags: [traefik-start]
+  become: true
+  tags: [traefik-start, never]
 
 - name: Stop Traefik service
   ansible.builtin.systemd:
     name: traefik
     state: stopped
-  become: yes
-  ignore_errors: yes
-  tags: [traefik-stop]
+  become: true
+  ignore_errors: true
+  tags: [traefik-stop, never]
 
 - name: Restart Traefik service
   ansible.builtin.systemd:
     name: traefik
     state: restarted
-  become: yes
-  tags: [traefik-restart]
+  become: true
+  tags: [traefik-restart, never]
