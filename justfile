@@ -117,18 +117,38 @@ syntax env="production":
     ansible-playbook -i inventory/{{ env }}.yml site.yml --syntax-check
 
 # ==============================
-#       VAULT
+#       VAULT (Ansible Vault - Encryption)
 # ==============================
 
-# Manage vault
+# Edit encrypted vault.yml
 [group('vault')]
 edit:
     ansible-vault edit vars/vault.yml
 
-# Change password and re-encrypt vault
+# Edit encrypted vault-secrets.yml (unseal keys)
+[group('vault')]
+edit-secrets:
+    ansible-vault edit vars/vault-secrets.yml
+
+# Encrypt vault-secrets.yml (run after pasting keys)
+[group('vault')]
+encrypt-secrets:
+    ansible-vault encrypt vars/vault-secrets.yml
+
+# Decrypt vault-secrets.yml (for editing manually)
+[group('vault')]
+decrypt-secrets:
+    ansible-vault decrypt vars/vault-secrets.yml
+
+# Change password and re-encrypt vault.yml
 [group('vault')]
 rekey:
     ansible-vault rekey vars/vault.yml
+
+# Change password and re-encrypt vault-secrets.yml
+[group('vault')]
+rekey-secrets:
+    ansible-vault rekey vars/vault-secrets.yml
 
 # ==============================
 #       HASHICORP VAULT
