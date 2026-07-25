@@ -1,6 +1,46 @@
 ---
 # Tailscale role - Install and Configure Tailscale VPN
 
+# Generate fresh auth key via API (runs on control node)
+- name: Generate fresh Tailscale auth key
+  uri:
+    url: "https://api.tailscale.com/api/v2/tailnet/{{ tailscale_tailnet }}/keys"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ tailscale_api_token }}"
+    body_format: json
+    body:
+      capabilities:
+        devices:
+          create:
+            reusable: true
+            ephemeral: false
+            preauthorized: true
+            tags: []
+      expirySeconds: 7776000  # 90 days
+    status_code: 200
+  register: fresh_key_response
+  delegate_to: localhost
+  run_once: true
+  no_log: true
+  when:
+    - tailscale_api_token is defined
+    - tailscale_tailnet is defined
+
+- name: Set fresh auth key as fact
+  set_fact:
+    tailscale_authkey: "{{ fresh_key_response.json.key }}"
+  no_log: true
+  when: fresh_key_response is not skipped
+
+- name: Display key generation status
+  debug:
+    msg:
+      - "✅ Generated fresh Tailscale auth key"
+      - "Key ID: {{ fresh_key_response.json.id }}"
+      - "Expires: {{ fresh_key_response.json.expires }}"
+  when: fresh_key_response is not skipped
+
 - name: Install prerequisties
   ansible.builtin.apt:
     name:
