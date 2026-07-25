@@ -1,5 +1,5 @@
 # Ansible Playbook Runner
-# 
+#
 # Authentication: Vault password stored in .vault_pass (gitignored)
 #                 Become password stored in vars/vault.yml
 #                 No password prompts required
@@ -198,6 +198,15 @@ vault-recover:
 #     GITHUB_RUNNER_TOKEN="{{ env.GITHUB_RUNNER_TOKEN }}" ansible-playbook -i inventory/production.yml playbooks/github-runner.yml --limit github-runner --extra-vars "ansible_python_interpreter=/usr/bin/python3"
 
 # ==============================
+#       TAILSCALE
+# ==============================
+
+# Check tailscale status on a host
+[group('tailscale')]
+tailscale-status host env="production":
+    ansible -i inventory/{{ env }}.yml {{ host }} -m shell -a "tailscale status" -b
+
+# ==============================
 #       KESTRA
 # ==============================
 
@@ -205,3 +214,83 @@ vault-recover:
 [group('kestra')]
 kestra-restart:
     ansible-playbook -i inventory/production.yml site.yml --tags kestra --limit marcus
+
+# ==============================
+#       KUBERNETES LEARNING
+# ==============================
+
+# Deploy a specific K8s resource type (e.g., just k8s-deploy 01-namespace my-namespace)
+[group('kubernetes')]
+k8s-deploy section namespace="":
+    #!/usr/bin/env bash
+    if [ -n "{{ namespace }}" ]; then
+        ansible-playbook kubernetes/{{ section }}/deploy.yml -e "namespace_name={{ namespace }}"
+    else
+        ansible-playbook kubernetes/{{ section }}/deploy.yml
+    fi
+
+# Dry run K8s deployment
+[group('kubernetes')]
+k8s-dry section namespace="":
+    #!/usr/bin/env bash
+    if [ -n "{{ namespace }}" ]; then
+        ansible-playbook kubernetes/{{ section }}/deploy.yml -e "namespace_name={{ namespace }}" --check
+    else
+        ansible-playbook kubernetes/{{ section }}/deploy.yml --check
+    fi
+
+# Apply manifests directly with kubectl (skip Ansible)
+[group('kubernetes')]
+k8s-apply section:
+    kubectl apply -f kubernetes/{{ section }}/manifests/
+
+# Delete namespace for a section (cleanup)
+[group('kubernetes')]
+k8s-clean section:
+    @echo "🗑️  Deleting namespace for {{ section }}..."
+    @kubectl delete namespace {{ section }} --ignore-not-found=true
+
+## Delete a specific namespace by name
+[group('kubernetes')]
+k8s-delete-ns namespace:
+    @echo "🗑️  Deleting namespace: {{ namespace }}..."
+    kubectl delete namespace {{ namespace }}
+
+# View resources in a section's namespace
+[group('kubernetes')]
+k8s-get section:
+    kubectl get all -n {{ section }}
+
+# Describe resources in a section's namespace
+[group('kubernetes')]
+k8s-describe section resource:
+    kubectl describe {{ resource }} -n {{ section }}
+
+# View logs for a pod in a section
+[group('kubernetes')]
+k8s-logs section pod:
+    kubectl logs {{ pod }} -n {{ section }}
+
+# List all K8s sections
+[group('kubernetes')]
+k8s-list:
+    @ls -1 kubernetes/ | grep -E '^[0-9]' | sort
+
+# Deploy all sections in order (full learning path)
+[group('kubernetes')]
+k8s-all:
+    @echo "🚀 Deploying all Kubernetes resources in order..."
+    @for section in $(ls -1 kubernetes/ | grep -E '^[0-9]' | sort); do \
+        echo "📦 Deploying $${section}..."; \
+        ansible-playbook kubernetes/$${section}/deploy.yml || exit 1; \
+    done
+    @echo "✅ All sections deployed!"
+
+# Clean up all K8s learning namespaces
+[group('kubernetes')]
+k8s-clean-all:
+    @echo "🗑️  Cleaning up all K8s learning namespaces..."
+    @for section in $(ls -1 kubernetes/ | grep -E '^[0-9]' | sort); do \
+        kubectl delete namespace $${section} --ignore-not-found=true; \
+    done
+    @echo "✅ Cleanup complete!"
