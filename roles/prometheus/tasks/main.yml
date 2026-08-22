@@ -1,0 +1,46 @@
+---
+# Prometheus role - Install and configure Prometheus monitoring components
+# Primarily for node_exporter on Ubuntu hosts
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  become: true
+
+- name: Install prometheus-node-exporter
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+  become: true
+
+- name: Enable and start prometheus-node-exporter service
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    state: started
+    enabled: true
+  become: true
+  when: not ansible_check_mode
+
+- name: Wait for node exporter to be available
+  ansible.builtin.wait_for:
+    port: 9100
+    timeout: 30
+  ignore_errors: true
+  when: not ansible_check_mode
+
+- name: Verify prometheus-node-exporter is running
+  ansible.builtin.command:
+    cmd: "systemctl status prometheus-node-exporter"
+  register: exporter_status
+  changed_when: false
+  failed_when: false
+  become: true
+  when: not ansible_check_mode
+
+- name: Display prometheus-node-exporter status
+  ansible.builtin.debug:
+    msg:
+      - "✅ Prometheus Node Exporter will be installed and enabled"
+      - "Service will listen on port 9100"
+      - "Status: {{ 'Active' if exporter_status.stdout is defined and 'active (running)' in exporter_status.stdout else 'Will start after installation' }}"
