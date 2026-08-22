@@ -1,0 +1,51 @@
+---
+# Postgres GCS Backup - Main Tasks
+
+- name: Check if backup directory exists
+  ansible.builtin.stat:
+    path: "{{ backup_source_dir }}"
+  register: backup_dir
+
+- name: Fail if backup directory doesn't exist
+  ansible.builtin.fail:
+    msg: "Backup directory {{ backup_source_dir }} does not exist"
+  when: not backup_dir.stat.exists
+
+- name: List recent backup files
+  ansible.builtin.find:
+    paths: "{{ backup_source_dir }}"
+    patterns: "*.sql.gz"
+    age: "-{{ backup_age_threshold }}d"
+  register: backup_files
+
+- name: Display found backup files
+  ansible.builtin.debug:
+    msg: "Found {{ backup_files.files | length }} backup file(s) from last {{ backup_age_threshold }} day(s)"
+
+- name: Fail if no recent backups found
+  ansible.builtin.fail:
+    msg: "No backup files found in {{ backup_source_dir }} from the last {{ backup_age_threshold }} day(s)"
+  when:
+    - fail_on_missing_backups
+    - backup_files.files | length == 0
+
+- name: Include GCS prerequisites check
+  ansible.builtin.include_tasks: check-prerequisites.yml
+
+- name: Upload backups to GCS
+  ansible.builtin.include_tasks: upload-to-gcs.yml
+
+- name: Verify uploads
+  ansible.builtin.include_tasks: verify-uploads.yml
+
+- name: Cleanup old backups
+  ansible.builtin.include_tasks: cleanup-old-backups.yml
+  when: retention_days > 0
+
+- name: Display summary
+  ansible.builtin.debug:
+    msg:
+      - "✅ Backup sync completed successfully!"
+      - "Uploaded: {{ backup_files.files | length }} file(s)"
+      - "GCS bucket: gs://{{ gcs_bucket }}/{{ gcs_prefix }}/"
+      - "Retention: {{ retention_days }} days"

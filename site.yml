@@ -46,6 +46,14 @@
         name: backup
       tags: backup
 
+    - name: Run Postgres GCS Backup Role
+      ansible.builtin.import_role:
+        name: postgres-gcs-backup
+      tags:
+        - postgres-backup
+        - backup
+        - gcs
+
     - name: Run GitHub Runner Role
       ansible.builtin.import_role:
         name: github-runner

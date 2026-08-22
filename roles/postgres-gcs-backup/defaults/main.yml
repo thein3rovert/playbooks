@@ -1,0 +1,28 @@
+---
+# Postgres GCS Backup Role - Default Variables
+
+# Source directory for postgres backups
+backup_source_dir: "/var/backup/postgresql"
+
+# GCS configuration
+gcs_bucket: "iv3-infra-us-prod"
+gcs_prefix: "postgres-backups"
+
+# Retention in days
+retention_days: 30
+
+# Service account key location
+service_account_key: "/root/.gcp/terraform-key.json"
+
+# Databases to backup
+postgres_databases:
+  - n8n
+  - forgejo
+  - kestra
+  - kaneo
+
+# Fail if no recent backups found
+fail_on_missing_backups: true
+
+# Age threshold for "recent" backups (in days)
+backup_age_threshold: 1
