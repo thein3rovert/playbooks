@@ -1,6 +1,7 @@
 ---
 # Prometheus role - Install and configure Prometheus monitoring components
 # Primarily for node_exporter on Ubuntu hosts
+# Configured to use port 3021 to match NixOS hosts
 
 - name: Update apt cache
   ansible.builtin.apt:
@@ -14,6 +15,30 @@
     state: present
   become: true
 
+- name: Create systemd override directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/prometheus-node-exporter.service.d
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Configure node exporter to use port 3021
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      ExecStart=
+      ExecStart=/usr/bin/prometheus-node-exporter --web.listen-address=:3021
+    dest: /etc/systemd/system/prometheus-node-exporter.service.d/override.conf
+    mode: '0644'
+  become: true
+  register: port_override
+
+- name: Reload systemd daemon
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: true
+  when: port_override.changed
+
 - name: Enable and start prometheus-node-exporter service
   ansible.builtin.systemd:
     name: prometheus-node-exporter
@@ -22,9 +47,16 @@
   become: true
   when: not ansible_check_mode
 
+- name: Restart service if config changed
+  ansible.builtin.systemd:
+    name: prometheus-node-exporter
+    state: restarted
+  become: true
+  when: port_override.changed and not ansible_check_mode
+
 - name: Wait for node exporter to be available
   ansible.builtin.wait_for:
-    port: 9100
+    port: 3021
     timeout: 30
   ignore_errors: true
   when: not ansible_check_mode
@@ -42,5 +74,5 @@
   ansible.builtin.debug:
     msg:
       - "✅ Prometheus Node Exporter will be installed and enabled"
-      - "Service will listen on port 9100"
+      - "Service will listen on port 3021 (matching NixOS hosts)"
       - "Status: {{ 'Active' if exporter_status.stdout is defined and 'active (running)' in exporter_status.stdout else 'Will start after installation' }}"
