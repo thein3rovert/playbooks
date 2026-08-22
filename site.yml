@@ -71,6 +71,9 @@
   become: true
   vars_files:
     - ./vars/vault.yml
+  tags:
+    - kubernetes
+    - k8s
 
   tasks:
     - name: Run k8s-prereqs Role
@@ -106,6 +109,10 @@
   become: true
   vars_files:
     - ./vars/vault.yml
+  tags:
+    - k3s-inventory
+    - k3s-monitoring
+    - reports
 
   tasks:
     - name: Run K3S Inventory Role
@@ -113,5 +120,4 @@
         name: k3s-inventory
       tags:
         - k3s-inventory
-        - monitoring
         - reports
