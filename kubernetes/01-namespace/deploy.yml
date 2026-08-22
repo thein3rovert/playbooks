@@ -1,0 +1,37 @@
+---
+- name: Deploy Namespace
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    namespace_name: "{{ namespace_name | default('01-namespace') }}"
+    manifest_dir: "/tmp/k8s-manifests/01-namespace"
+
+  tasks:
+    - name: Ensure manifest directory exists
+      file:
+        path: "{{ manifest_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Template namespace manifest
+      template:
+        src: "{{ playbook_dir }}/manifests/Namespace.yaml.j2"
+        dest: "{{ manifest_dir }}/Namespace.yaml"
+
+    - name: Apply namespace manifest
+      kubernetes.core.k8s:
+        state: present
+        src: "{{ manifest_dir }}/Namespace.yaml"
+
+    - name: Verify namespace exists
+      kubernetes.core.k8s_info:
+        kind: Namespace
+        name: "{{ namespace_name }}"
+      register: ns_info
+
+    - name: Display namespace status
+      debug:
+        msg: "Namespace '{{ namespace_name }}' is {{ ns_info.resources[0].status.phase }}"
+      when: ns_info.resources | length > 0

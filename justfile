@@ -216,6 +216,35 @@ kestra-restart:
     ansible-playbook -i inventory/production.yml site.yml --tags kestra --limit marcus
 
 # ==============================
+#       MONITORING (PROMETHEUS)
+# ==============================
+
+# Setup Prometheus monitoring on all production hosts
+[group('monitoring')]
+monitoring:
+    ansible-playbook -i inventory/production.yml site.yml --tags monitoring
+
+# Setup Prometheus monitoring on dev hosts
+[group('monitoring')]
+monitoring-dev:
+    ansible-playbook -i inventory/dev.yml site.yml --tags monitoring
+
+# Setup monitoring on specific host (default: production, add 'dev' for dev hosts)
+[group('monitoring')]
+monitoring-host host env="production":
+    ansible-playbook -i inventory/{{ env }}.yml site.yml --tags monitoring --limit {{ host }}
+
+# Dry run monitoring setup on production
+[group('monitoring')]
+monitoring-dry:
+    ansible-playbook -i inventory/production.yml site.yml --tags monitoring --check
+
+# Dry run monitoring setup on specific host
+[group('monitoring')]
+monitoring-dry-host host env="production":
+    ansible-playbook -i inventory/{{ env }}.yml site.yml --tags monitoring --limit {{ host }} --check
+
+# ==============================
 #       KUBERNETES LEARNING
 # ==============================
 
