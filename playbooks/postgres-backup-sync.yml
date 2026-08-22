@@ -1,0 +1,16 @@
+---
+# Sync Postgres Backups to GCS
+# Uses the postgres-gcs-backup role
+#
+# Usage:
+#   ansible-playbook playbooks/postgres-backup-sync.yml
+#   ansible-playbook playbooks/postgres-backup-sync.yml --check
+#   ansible-playbook playbooks/postgres-backup-sync.yml -e "retention_days=7"
+
+- name: Sync Postgres Backups to GCS
+  hosts: bellamy
+  become: true
+  gather_facts: true
+  
+  roles:
+    - postgres-gcs-backup
