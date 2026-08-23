@@ -1,6 +1,6 @@
 all:
   hosts:
-    localhost:
+    nixos_host:
       ansible_host: 100.105.217.77
       ansible_user: thein3rovert
       ansible_connection: ssh
