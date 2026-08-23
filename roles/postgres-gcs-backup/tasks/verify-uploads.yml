@@ -1,17 +1,20 @@
 ---
-# Verify uploads to GCS
+# Verify uploads to GCS from container
 
 - name: List files in GCS bucket
   ansible.builtin.command:
     cmd: >
       gsutil ls gs://{{ gcs_bucket }}/{{ gcs_prefix }}/
   environment: "{{ gcs_env }}"
+  delegate_to: localhost
   register: gcs_list
   changed_when: false
+  run_once: true
 
 - name: Display uploaded files
   ansible.builtin.debug:
     msg: "{{ gcs_list.stdout_lines }}"
+  run_once: true
 
 - name: Verify each database backup was uploaded
   ansible.builtin.assert:
@@ -20,3 +23,4 @@
     fail_msg: "Backup for {{ item }} was not found in GCS"
     success_msg: "Backup for {{ item }} verified in GCS"
   loop: "{{ postgres_databases }}"
+  run_once: true

@@ -1,0 +1,30 @@
+---
+# Fetch backup files from target host to container
+
+- name: Ensure temp directory exists in container
+  ansible.builtin.file:
+    path: "{{ container_temp_dir }}"
+    state: directory
+    mode: '0700'
+  delegate_to: localhost
+  run_once: true
+
+- name: Fetch backup files from target to container
+  ansible.builtin.fetch:
+    src: "{{ item.path }}"
+    dest: "{{ container_temp_dir }}/{{ item.path | basename }}"
+    flat: yes
+  loop: "{{ backup_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+
+- name: List fetched files in container
+  ansible.builtin.find:
+    paths: "{{ container_temp_dir }}"
+    patterns: "*.sql.gz"
+  delegate_to: localhost
+  register: fetched_files
+
+- name: Display fetched files
+  ansible.builtin.debug:
+    msg: "Fetched {{ fetched_files.files | length }} backup file(s) to container"

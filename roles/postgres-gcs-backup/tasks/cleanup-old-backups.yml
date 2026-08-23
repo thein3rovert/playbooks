@@ -1,9 +1,10 @@
 ---
-# Cleanup old backups from GCS
+# Cleanup old backups from GCS (runs in container)
 
 - name: Calculate cutoff date for retention
   ansible.builtin.set_fact:
     cutoff_date: "{{ '%Y-%m-%d' | strftime(ansible_date_time.epoch | int - (retention_days * 86400)) }}"
+  run_once: true
 
 - name: List old backup files in GCS
   ansible.builtin.shell:
@@ -12,24 +13,30 @@
       awk '$2 < "{{ cutoff_date }}" {print $3}' |
       grep -v '^$'
   environment: "{{ gcs_env }}"
+  delegate_to: localhost
   register: old_backups
   changed_when: false
   failed_when: false
+  run_once: true
 
 - name: Delete old backups from GCS
   ansible.builtin.command:
     cmd: gsutil rm {{ item }}
   environment: "{{ gcs_env }}"
+  delegate_to: localhost
   loop: "{{ old_backups.stdout_lines }}"
   when: old_backups.stdout_lines | length > 0
   register: delete_result
+  run_once: true
 
 - name: Report cleanup results
   ansible.builtin.debug:
     msg: "Deleted {{ old_backups.stdout_lines | length }} old backup(s) older than {{ retention_days }} days"
   when: old_backups.stdout_lines | length > 0
+  run_once: true
 
 - name: No old backups to clean up
   ansible.builtin.debug:
     msg: "No backups older than {{ retention_days }} days found"
   when: old_backups.stdout_lines | length == 0
+  run_once: true

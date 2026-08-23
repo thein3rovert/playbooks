@@ -1,8 +1,11 @@
 ---
 # Postgres GCS Backup Role - Default Variables
 
-# Source directory for postgres backups
+# Source directory for postgres backups on target host
 backup_source_dir: "/var/backup/postgresql"
+
+# Container temp directory for fetched backups
+container_temp_dir: "/tmp/postgres-backups"
 
 # GCS configuration
 gcs_bucket: "iv3-infra-us-prod"
@@ -11,8 +14,8 @@ gcs_prefix: "postgres-backups"
 # Retention in days
 retention_days: 30
 
-# Service account key location
-service_account_key: "/root/.gcp/terraform-key.json"
+# Service account key location (in container)
+service_account_key: "/root/.gcp/service-account.json"
 
 # Databases to backup
 postgres_databases:

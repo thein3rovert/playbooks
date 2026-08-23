@@ -1,28 +1,35 @@
 ---
-# Check prerequisites for GCS backup
+# Check prerequisites for GCS backup (runs in container)
 
-- name: Check if gsutil is installed
+- name: Check if gsutil is installed in container
   ansible.builtin.command: which gsutil
   register: gsutil_check
   changed_when: false
   failed_when: false
+  delegate_to: localhost
+  run_once: true
 
-- name: Fail if gsutil not installed
+- name: Fail if gsutil not installed in container
   ansible.builtin.fail:
-    msg: "gsutil not found. Install google-cloud-sdk package."
+    msg: "gsutil not found in container. Install google-cloud-sdk package."
   when: gsutil_check.rc != 0
+  run_once: true
 
-- name: Check if service account key exists
+- name: Check if service account key exists in container
   ansible.builtin.stat:
     path: "{{ service_account_key }}"
   register: sa_key
+  delegate_to: localhost
+  run_once: true
 
-- name: Fail if service account key missing
+- name: Fail if service account key missing in container
   ansible.builtin.fail:
-    msg: "Service account key not found at {{ service_account_key }}"
+    msg: "Service account key not found at {{ service_account_key }} in container"
   when: not sa_key.stat.exists
+  run_once: true
 
 - name: Set GCS credentials environment variable
   ansible.builtin.set_fact:
     gcs_env:
       GOOGLE_APPLICATION_CREDENTIALS: "{{ service_account_key }}"
+  run_once: true

@@ -1,17 +1,18 @@
 ---
 # Postgres GCS Backup - Main Tasks
+# Architecture: Fetch backups from target → Upload from container → Credentials stay in container
 
-- name: Check if backup directory exists
+- name: Check if backup directory exists on target
   ansible.builtin.stat:
     path: "{{ backup_source_dir }}"
   register: backup_dir
 
 - name: Fail if backup directory doesn't exist
   ansible.builtin.fail:
-    msg: "Backup directory {{ backup_source_dir }} does not exist"
+    msg: "Backup directory {{ backup_source_dir }} does not exist on target"
   when: not backup_dir.stat.exists
 
-- name: List recent backup files
+- name: List recent backup files on target
   ansible.builtin.find:
     paths: "{{ backup_source_dir }}"
     patterns: "*.sql.gz"
@@ -20,7 +21,7 @@
 
 - name: Display found backup files
   ansible.builtin.debug:
-    msg: "Found {{ backup_files.files | length }} backup file(s) from last {{ backup_age_threshold }} day(s)"
+    msg: "Found {{ backup_files.files | length }} backup file(s) from last {{ backup_age_threshold }} day(s) on target"
 
 - name: Fail if no recent backups found
   ansible.builtin.fail:
@@ -29,18 +30,24 @@
     - fail_on_missing_backups
     - backup_files.files | length == 0
 
-- name: Include GCS prerequisites check
+- name: Check prerequisites in container
   ansible.builtin.include_tasks: check-prerequisites.yml
 
-- name: Upload backups to GCS
+- name: Fetch backup files from target to container
+  ansible.builtin.include_tasks: fetch-backups.yml
+
+- name: Upload backups to GCS from container
   ansible.builtin.include_tasks: upload-to-gcs.yml
 
 - name: Verify uploads
   ansible.builtin.include_tasks: verify-uploads.yml
 
-- name: Cleanup old backups
+- name: Cleanup old backups in GCS
   ansible.builtin.include_tasks: cleanup-old-backups.yml
   when: retention_days > 0
+
+- name: Cleanup temp files in container
+  ansible.builtin.include_tasks: cleanup-container.yml
 
 - name: Display summary
   ansible.builtin.debug:
@@ -49,3 +56,4 @@
       - "Uploaded: {{ backup_files.files | length }} file(s)"
       - "GCS bucket: gs://{{ gcs_bucket }}/{{ gcs_prefix }}/"
       - "Retention: {{ retention_days }} days"
+      - "🔒 Credentials remained isolated in container"

@@ -1,0 +1,14 @@
+---
+# Cleanup temporary files in container
+
+- name: Remove temp backup files from container
+  ansible.builtin.file:
+    path: "{{ container_temp_dir }}"
+    state: absent
+  delegate_to: localhost
+  run_once: true
+
+- name: Confirm cleanup
+  ansible.builtin.debug:
+    msg: "🧹 Cleaned up temp backup files from container"
+  run_once: true

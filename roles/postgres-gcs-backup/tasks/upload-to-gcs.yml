@@ -1,13 +1,16 @@
 ---
-# Upload backup files to GCS
+# Upload backup files to GCS from container
 
-- name: Upload each backup file to GCS
+- name: Upload each backup file to GCS from container
   ansible.builtin.command:
     cmd: >
       gsutil cp
-      {{ item.path }}
+      {{ container_temp_dir }}/{{ item.path | basename }}
       gs://{{ gcs_bucket }}/{{ gcs_prefix }}/{{ item.path | basename }}
   environment: "{{ gcs_env }}"
+  delegate_to: localhost
   loop: "{{ backup_files.files }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
   register: upload_result
   changed_when: "'Copying' in upload_result.stderr"
