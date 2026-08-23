@@ -3,7 +3,8 @@
 
 - name: Calculate cutoff date for retention
   ansible.builtin.set_fact:
-    cutoff_date: "{{ '%Y-%m-%d' | strftime(ansible_date_time.epoch | int - (retention_days | int * 86400)) }}"
+    cutoff_date: "{{ lookup('pipe', 'date -d \"' ~ (retention_days | int) ~ ' days ago\" +%Y-%m-%d') }}"
+  delegate_to: localhost
   run_once: true
 
 - name: List old backup files in GCS
