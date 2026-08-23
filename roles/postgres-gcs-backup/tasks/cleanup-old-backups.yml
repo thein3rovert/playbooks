@@ -12,7 +12,6 @@
       gsutil ls -l gs://{{ gcs_bucket }}/{{ gcs_prefix }}/ |
       awk '$2 < "{{ cutoff_date }}" {print $3}' |
       grep -v '^$'
-  environment: "{{ gcs_env }}"
   delegate_to: localhost
   register: old_backups
   changed_when: false
@@ -22,7 +21,6 @@
 - name: Delete old backups from GCS
   ansible.builtin.command:
     cmd: gsutil rm {{ item }}
-  environment: "{{ gcs_env }}"
   delegate_to: localhost
   loop: "{{ old_backups.stdout_lines }}"
   when: old_backups.stdout_lines | length > 0

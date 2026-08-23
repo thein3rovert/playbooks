@@ -3,9 +3,7 @@
 
 - name: List files in GCS bucket
   ansible.builtin.command:
-    cmd: >
-      gsutil ls gs://{{ gcs_bucket }}/{{ gcs_prefix }}/
-  environment: "{{ gcs_env }}"
+    cmd: gsutil ls gs://{{ gcs_bucket }}/{{ gcs_prefix }}/
   delegate_to: localhost
   register: gcs_list
   changed_when: false

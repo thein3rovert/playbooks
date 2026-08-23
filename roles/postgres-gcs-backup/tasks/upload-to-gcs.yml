@@ -7,7 +7,6 @@
       gsutil cp
       {{ container_temp_dir }}/{{ item.path | basename }}
       gs://{{ gcs_bucket }}/{{ gcs_prefix }}/{{ item.path | basename }}
-  environment: "{{ gcs_env }}"
   delegate_to: localhost
   loop: "{{ backup_files.files }}"
   loop_control:
