@@ -44,7 +44,7 @@
 
 - name: Cleanup old backups in GCS
   ansible.builtin.include_tasks: cleanup-old-backups.yml
-  when: retention_days > 0
+  when: retention_days | int > 0
 
 - name: Cleanup temp files in container
   ansible.builtin.include_tasks: cleanup-container.yml
