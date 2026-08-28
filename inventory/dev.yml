@@ -5,7 +5,29 @@ all:
         ubuntu-srv-01:
           ansible_host: ubuntu-srv-01
           ansible_user: thein3rovert
+          enabled_roles: &all_general_roles
+            - bootstrap
+            - ping
+            - nix
+            - systemd
+            - tailscale
+            - user
+            - backup
+            - postgres-gcs-backup
+            - github-runner
+            - kestra
+            - prometheus
         lexa:
           ansible_host: 100.88.29.64
+          enabled_roles:
+            - ping
+            - backup
+            - prometheus
+            - user
         nixos-runner:
           ansible_host: 100.111.90.52
+          enabled_roles:
+            - ping
+            - backup
+            - prometheus
+            - user
