@@ -78,4 +78,6 @@ Copied the existing local Vault password, without displaying or changing it, to 
 Configured `ansible.cfg` to use `~/.config/ansible/vault-password` by default and removed forced interactive prompts from the Vault Just recipes. Confirmed normal syntax checks use the local default and `ANSIBLE_VAULT_PASSWORD_FILE` successfully overrides it for CI.
 
 Final pre-commit verification passed: Ansible resolves the default Vault path to `~/.config/ansible/vault-password`, and an `ANSIBLE_VAULT_PASSWORD_FILE` environment value overrides it as intended. Production/development site syntax checks, Vault management syntax check, Just recipe parsing, and diff validation passed. Development still reports the pre-existing unmatched K3s group warnings. Runtime behavior remains to be verified against a safely selected host before closing the task.
+
+Changes committed on branch `plb-001-harden-ansible-security` as `564027e` (`fix: harden ansible credential handling`). Task remains In Progress pending a controlled runtime verification against a selected host.
 <!-- SECTION:NOTES:END -->
