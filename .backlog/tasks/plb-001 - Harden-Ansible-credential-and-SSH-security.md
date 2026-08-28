@@ -1,11 +1,11 @@
 ---
 id: PLB-001
 title: Harden Ansible credential and SSH security
-status: In Progress
+status: Done
 assignee:
   - AI
 created_date: '2026-08-28 21:38'
-updated_date: '2026-08-28 21:59'
+updated_date: '2026-08-28 22:02'
 labels:
   - ansible
   - security
@@ -40,13 +40,13 @@ Remove the immediate credential-exposure and insecure-access risks identified in
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ansible runs do not print or otherwise expose Tailscale, GitHub Runner, Argo CD, Linkding, or Vault credentials in normal output
-- [ ] #2 Linkding deployment fails safely when a valid non-placeholder administrator password is not supplied
-- [ ] #3 Tailscale authentication credentials are created only when enrollment is required and are not unnecessarily reusable or long-lived
-- [ ] #4 Argo CD administrator credentials are not decoded or displayed by the automation
-- [ ] #5 SSH host identity is verified rather than globally bypassed
-- [ ] #6 The repository does not require a plaintext static Vault password stored in the project working tree
-- [ ] #7 Affected playbooks pass syntax validation without revealing secret values
+- [x] #1 Ansible runs do not print or otherwise expose Tailscale, GitHub Runner, Argo CD, Linkding, or Vault credentials in normal output
+- [x] #2 Linkding deployment fails safely when a valid non-placeholder administrator password is not supplied
+- [x] #3 Tailscale authentication credentials are created only when enrollment is required and are not unnecessarily reusable or long-lived
+- [x] #4 Argo CD administrator credentials are not decoded or displayed by the automation
+- [x] #5 SSH host identity is verified rather than globally bypassed
+- [x] #6 The repository does not require a plaintext static Vault password stored in the project working tree
+- [x] #7 Affected playbooks pass syntax validation without revealing secret values
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -80,4 +80,14 @@ Configured `ansible.cfg` to use `~/.config/ansible/vault-password` by default an
 Final pre-commit verification passed: Ansible resolves the default Vault path to `~/.config/ansible/vault-password`, and an `ANSIBLE_VAULT_PASSWORD_FILE` environment value overrides it as intended. Production/development site syntax checks, Vault management syntax check, Just recipe parsing, and diff validation passed. Development still reports the pre-existing unmatched K3s group warnings. Runtime behavior remains to be verified against a safely selected host before closing the task.
 
 Changes committed on branch `plb-001-harden-ansible-security` as `564027e` (`fix: harden ansible credential handling`). Task remains In Progress pending a controlled runtime verification against a selected host.
+
+Controlled runtime verification on `bellamy` passed: `ansible.builtin.ping` returned `pong` with SSH host-key checking enabled. `ansible-vault view vars/vault.yml` also decrypted successfully using the configured external default path without displaying its contents. No configuration role or infrastructure-changing playbook was run.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Hardened Ansible credential handling without rotating live secrets. Secret-bearing Tailscale and GitHub Runner operations now suppress output; Argo CD no longer retrieves or prints its initial administrator password; Linkding requires a non-placeholder Vault-supplied password; and Tailscale creates short-lived, single-use enrollment keys only when needed. Moved the local Vault password default outside the repository to `~/.config/ansible/vault-password`, retained CI override support through `ANSIBLE_VAULT_PASSWORD_FILE`, enabled SSH host-key verification, and updated Just recipes and documentation.
+
+Verification: production and development site syntax checks passed; Vault management syntax check passed; production/development inventory parsing and Just recipe parsing passed; Vault decryption through the external path succeeded without output; and Bellamy returned `pong` with host-key checking enabled. The development syntax check retains pre-existing unmatched K3s group warnings. No credentials were rotated and no infrastructure-changing playbook was executed.
+<!-- SECTION:FINAL_SUMMARY:END -->
