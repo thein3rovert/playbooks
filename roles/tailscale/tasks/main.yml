@@ -1,46 +1,6 @@
 ---
 # Tailscale role - Install and Configure Tailscale VPN
 
-# Generate fresh auth key via API (runs on control node)
-- name: Generate fresh Tailscale auth key
-  uri:
-    url: "https://api.tailscale.com/api/v2/tailnet/{{ tailscale_tailnet }}/keys"
-    method: POST
-    headers:
-      Authorization: "Bearer {{ tailscale_api_token }}"
-    body_format: json
-    body:
-      capabilities:
-        devices:
-          create:
-            reusable: true
-            ephemeral: false
-            preauthorized: true
-            tags: []
-      expirySeconds: 7776000  # 90 days
-    status_code: 200
-  register: fresh_key_response
-  delegate_to: localhost
-  run_once: true
-  no_log: true
-  when:
-    - tailscale_api_token is defined
-    - tailscale_tailnet is defined
-
-- name: Set fresh auth key as fact
-  set_fact:
-    tailscale_authkey: "{{ fresh_key_response.json.key }}"
-  no_log: true
-  when: fresh_key_response is not skipped
-
-- name: Display key generation status
-  debug:
-    msg:
-      - "✅ Generated fresh Tailscale auth key"
-      - "Key ID: {{ fresh_key_response.json.id }}"
-      - "Expires: {{ fresh_key_response.json.expires }}"
-  when: fresh_key_response is not skipped
-
 - name: Install prerequisties
   ansible.builtin.apt:
     name:
@@ -77,15 +37,49 @@
   failed_when: false
   become: true
 
+# Generate a short-lived, single-use key only for hosts that need enrollment.
+- name: Generate fresh Tailscale auth key
+  ansible.builtin.uri:
+    url: "https://api.tailscale.com/api/v2/tailnet/{{ tailscale_tailnet }}/keys"
+    method: POST
+    headers:
+      Authorization: "Bearer {{ tailscale_api_token }}"
+    body_format: json
+    body:
+      capabilities:
+        devices:
+          create:
+            reusable: false
+            ephemeral: false
+            preauthorized: true
+            tags: []
+      expirySeconds: "{{ tailscale_authkey_expiry_seconds }}"
+    status_code: 200
+  register: fresh_key_response
+  delegate_to: localhost
+  no_log: true
+  when:
+    - tailscale_status.rc != 0
+    - tailscale_api_token is defined
+    - tailscale_tailnet is defined
+
+- name: Set fresh auth key as fact
+  ansible.builtin.set_fact:
+    tailscale_authkey: "{{ fresh_key_response.json.key }}"
+  no_log: true
+  when:
+    - fresh_key_response is not skipped
+    - fresh_key_response.json.key is defined
+
 # If tailscale not authenticated > authenticate
-- name: Authenticate and COnfigure tailscale with auth key
+- name: Authenticate and configure Tailscale with auth key
   ansible.builtin.command:
     cmd: "tailscale up {{ tailscale_up_flags }} --authkey={{ tailscale_authkey }}"
   when:
     - tailscale_status.rc != 0
     - tailscale_authkey is defined
   become: true
-  no_log: false
+  no_log: true
 
 # - name: Authenticate and COnfigure tailscale without auth key
 #   ansible.builtin.command:

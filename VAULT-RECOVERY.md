@@ -60,7 +60,9 @@ nano vars/vault-secrets.yml  # Add your 3 unseal keys
 ansible-vault encrypt vars/vault-secrets.yml
 ```
 
-2. Use the same password that's already in `.vault_pass`
+2. Supply the existing password with `--ask-vault-pass`, or set
+   `ANSIBLE_VAULT_PASSWORD_FILE` to a protected password-client script or file
+   stored outside this repository.
 
 ### Usage After Setup
 
@@ -152,7 +154,8 @@ On becca (10.10.10.101):
 The vault CLI needs to be in PATH. Check with: `ssh becca "which vault"`
 
 ### Unseal fails with "permission denied"
-Ensure `vars/vault-secrets.yml` is encrypted and `.vault_pass` exists.
+Ensure `vars/vault-secrets.yml` is encrypted and provide the Vault password
+interactively or through an external password client.
 
 ### Playbook can't connect to becca
 Check SSH config: `ssh becca "hostname"` should work first.

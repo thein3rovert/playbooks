@@ -2,6 +2,17 @@
 # Linkding role - Deploy Linkding bookmark manager to Kubernetes
 # Requires: kubernetes.core collection (ansible-galaxy collection install kubernetes.core)
 
+- name: Validate linkding superuser credentials
+  ansible.builtin.assert:
+    that:
+      - linkding_superuser_password is defined
+      - linkding_superuser_password | default('') | string | length > 0
+      - linkding_superuser_password | default('') != 'changeme'
+    fail_msg: >-
+      Define a nonempty, non-placeholder linkding_superuser_password in an
+      encrypted Ansible Vault file before deploying linkding.
+  no_log: true
+
 - name: Check if linkding deployment already exists
   kubernetes.core.k8s_info:
     kubeconfig: "{{ k8s_kubeconfig }}"

@@ -2,4 +2,4 @@
 # Tailscale roles - Default variables
 
 tailscale_up_flags: --ssh --operator=root --accept-routes
-
+tailscale_authkey_expiry_seconds: 600

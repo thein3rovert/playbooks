@@ -6,10 +6,9 @@ Ansible playbooks and roles for managing development and production infrastructu
 
 This project includes a `justfile` for simplified command execution. You can use either `just` commands or run `ansible-playbook` directly.
 
-**Note:** Authentication is configured to be passwordless:
-- Vault password is stored in `.vault_pass` (gitignored)
-- Become password is stored in the encrypted vault file
-- No password prompts required for any commands
+**Note:** Vault credentials are not stored in this repository. The local
+default is `~/.config/ansible/vault-password`; CI can override it with
+`ANSIBLE_VAULT_PASSWORD_FILE`.
 
 ### Using Just (Recommended)
 
@@ -227,17 +226,21 @@ ansible-playbook -i inventory/production.yml site.yml --list-tasks
 The `ansible.cfg` file contains default settings. Key configurations:
 
 - **Inventory**: Specify with `-i` flag (production.yml or dev.yml)
-- **Vault password file**: `.vault_pass` (automatically loaded, no prompts)
+- **Vault password**: `~/.config/ansible/vault-password`, overridable through `ANSIBLE_VAULT_PASSWORD_FILE`
 - **Forks**: 5 parallel processes
 - **Python interpreter**: /usr/bin/python3
-- **Host key checking**: Disabled
+- **Host key checking**: Enabled
 
 ### Setting Up Authentication
 
-1. **Create vault password file:**
+1. **Choose a secure Vault password workflow:**
    ```bash
-   echo "your_vault_password" > .vault_pass
-   chmod 600 .vault_pass
+   # Interactive (recommended for local use)
+   ansible-playbook -i inventory/production.yml site.yml --ask-vault-pass
+
+   # Or point Ansible to a protected file or password-client script
+   # stored outside this repository.
+   export ANSIBLE_VAULT_PASSWORD_FILE="$HOME/.config/ansible/vault-pass-client"
    ```
 
 2. **Add become password to vault:**
@@ -246,7 +249,8 @@ The `ansible.cfg` file contains default settings. Key configurations:
    # Add line: ansible_become_password: your_sudo_password
    ```
 
-Once configured, all commands run without password prompts.
+Before connecting, populate `~/.ssh/known_hosts` with host keys verified
+through a trusted channel. Ansible will reject unknown or changed host keys.
 
 ## Vault Management
 

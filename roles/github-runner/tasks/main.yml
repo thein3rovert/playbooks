@@ -66,6 +66,7 @@
   become_user: runner
   when: not runner_exists.stat.exists
   register: runner_config
+  no_log: true
 
 - name: Create runner service file
   ansible.builtin.copy:

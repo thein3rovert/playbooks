@@ -1,8 +1,8 @@
 # Ansible Playbook Runner
 #
-# Authentication: Vault password stored in .vault_pass (gitignored)
-#                 Become password stored in vars/vault.yml
-#                 No password prompts required
+# Authentication: supply the Vault password with --ask-vault-pass or set
+#                 ANSIBLE_VAULT_PASSWORD_FILE to a credential source outside
+#                 this repository. Become password is stored in vars/vault.yml.
 #
 # Note: Host environment defaults to "production" unless specified
 #       Use 'dev' as second parameter for dev hosts
@@ -167,12 +167,12 @@ vault-restart:
 # Unseal Vault (requires encrypted vault-secrets.yml)
 [group('hashicorp-vault')]
 vault-unseal:
-    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=unseal" -e "@vars/vault-secrets.yml" --vault-password-file .vault_pass
+    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=unseal" -e "@vars/vault-secrets.yml"
 
 # Restart and unseal Vault in one operation
 [group('hashicorp-vault')]
 vault-restart-unseal:
-    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=restart_unseal" -e "@vars/vault-secrets.yml" --vault-password-file .vault_pass
+    ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=restart_unseal" -e "@vars/vault-secrets.yml"
 
 # Clean up disk space on Vault server
 [group('hashicorp-vault')]
@@ -185,7 +185,7 @@ vault-recover:
     @echo "🔧 Step 1: Cleaning up disk space..."
     @ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=disk_cleanup"
     @echo "🔄 Step 2: Restarting and unsealing Vault..."
-    @ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=restart_unseal" -e "@vars/vault-secrets.yml" --vault-password-file .vault_pass
+    @ansible-playbook -i inventory/production.yml vault-manage.yml -e "vault_action=restart_unseal" -e "@vars/vault-secrets.yml"
     @echo "✅ Vault recovery complete!"
 
 # ==============================

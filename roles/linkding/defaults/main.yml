@@ -17,9 +17,9 @@ linkding_storage_size: 1Gi #2Gi
 # Default Storage Class is currently Longhorn
 linkding_storage_class: ""  # Leave empty for default storage class
 
-# Superuser credentials (override in vault!)
+# Superuser credentials
 linkding_superuser_name: admin
-linkding_superuser_password: changeme  #should be in vault.yml
+# Required: define linkding_superuser_password in an encrypted vault file.
 
 # Networking
 linkding_port: 9090
