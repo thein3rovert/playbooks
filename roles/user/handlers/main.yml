@@ -1,0 +1,6 @@
+---
+- name: Reload SSH
+  ansible.builtin.service:
+    name: "{{ user_ssh_service_name }}"
+    state: reloaded
+  become: true

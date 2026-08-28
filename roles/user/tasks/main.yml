@@ -1,31 +1,75 @@
---- 
-# Simple playbook to manage user and groups
-- name: Ensure group 'users' exists
+---
+# Manage a non-root administrator and safely harden SSH.
+- name: Report unsupported user-management platform
+  ansible.builtin.debug:
+    msg: >-
+      Skipping the user role on {{ ansible_facts.distribution }} because user
+      accounts and SSH are managed declaratively on this platform.
+  when: ansible_facts.os_family not in user_role_supported_os_families
+
+- name: Stop user role on unsupported platforms
+  ansible.builtin.meta: end_role
+  when: ansible_facts.os_family not in user_role_supported_os_families
+
+- name: Validate user and SSH hardening inputs
+  ansible.builtin.assert:
+    that:
+      - default_user is defined
+      - default_user | string | trim | length > 0
+      - default_user != 'root'
+      - default_group is defined
+      - default_group | string | trim | length > 0
+      - ssh_pub_key is defined
+      - ssh_pub_key | string | trim | length > 0
+    fail_msg: >-
+      Define a non-root default_user, default_group, and nonempty ssh_pub_key
+      before applying SSH hardening.
+
+- name: Check SSH daemon binary
+  ansible.builtin.stat:
+    path: "{{ user_sshd_binary }}"
+  register: user_sshd_binary_stat
+
+- name: Require an SSH daemon validator
+  ansible.builtin.assert:
+    that:
+      - user_sshd_binary_stat.stat.exists
+      - user_sshd_binary_stat.stat.executable
+    fail_msg: >-
+      SSH hardening stopped because {{ user_sshd_binary }} is unavailable or
+      not executable. Override user_sshd_binary with the correct path.
+
+- name: Ensure configured user group exists
   ansible.builtin.group:
     name: "{{ default_group }}"
     state: present
   become: true
 
-- name: Ensure user 'thein3rovert' exist and is part of the 'users'
+- name: Ensure configured non-root user exists
   ansible.builtin.user:
     name: "{{ default_user }}"
-    groups: users
+    group: "{{ default_group }}"
+    groups: "{{ default_group }}"
+    append: true
+    create_home: true
     state: present
   become: true
 
 - name: Ensure .ssh directory exists for user
   ansible.builtin.file:
-    path: "{{ssh_path}}"
+    path: "{{ ssh_path }}"
     state: directory
     owner: "{{ default_user }}"
     group: "{{ default_group }}"
     mode: "{{ default_user_permission }}"
+  become: true
 
 - name: Add authorized key for user
-  authorized_key:
+  ansible.posix.authorized_key:
     user: "{{ default_user }}"
     state: present
     key: "{{ ssh_pub_key }}"
+  become: true
 
 - name: Set correct permissions on authorized_keys
   ansible.builtin.file:
@@ -33,10 +77,27 @@
     owner: "{{ default_user }}"
     group: "{{ default_group }}"
     mode: "{{ authorized_keys_permission }}"
+  become: true
+
+- name: Verify authorized_keys is populated
+  ansible.builtin.stat:
+    path: "{{ authorized_keys_path }}"
+  register: user_authorized_keys
+  become: true
+
+- name: Require a usable authorized_keys file before hardening SSH
+  ansible.builtin.assert:
+    that:
+      - user_authorized_keys.stat.exists
+      - user_authorized_keys.stat.isreg
+      - user_authorized_keys.stat.size | int > 0
+    fail_msg: >-
+      SSH hardening stopped because {{ authorized_keys_path }} is missing or
+      empty. Password and root login remain unchanged.
 
 - name: Harden SSH daemon configuration
   ansible.builtin.blockinfile:
-    path: /etc/ssh/sshd_config
+    path: "{{ user_sshd_config_path }}"
     marker: "# {mark} ANSIBLE MANAGED SSH HARDENING"
     block: |
       PasswordAuthentication no
@@ -47,4 +108,21 @@
       AllowUsers {{ default_user }}
       X11Forwarding no
       MaxAuthTries 3
-  notify: Restart ssh
+    validate: "{{ user_sshd_binary }} -t -f %s"
+  become: true
+  notify: Reload SSH
+
+- name: Apply validated SSH configuration
+  ansible.builtin.meta: flush_handlers
+
+- name: Reset the current SSH control connection
+  ansible.builtin.meta: reset_connection
+
+- name: Verify a fresh key-based connection as the non-root user
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 10
+    sleep: 2
+    timeout: 30
+  vars:
+    ansible_user: "{{ default_user }}"
+    ansible_become: false
