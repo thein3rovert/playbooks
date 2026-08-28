@@ -5,21 +5,61 @@ all:
         becca:
           ansible_host: 100.123.31.22 # Tailscale IP
           ansible_user: root
+          enabled_roles: &all_general_roles
+            - bootstrap
+            - ping
+            - nix
+            - systemd
+            - tailscale
+            - user
+            - backup
+            - postgres-gcs-backup
+            - github-runner
+            - prometheus
         bellamy:
           ansible_host: 100.105.187.63
           ansible_user: thein3rovert
+          enabled_roles:
+            - tailscale
+            - ping
+            - backup
+            - systemd
+            - prometheus
         finn:
           ansible_host: 100.81.26.84
           ansible_user: thein3rovert
+          enabled_roles:
+            - tailscale
+            - ping
+            - backup
+            - systemd
+            - prometheus
         marcus:
           ansible_host: 100.94.20.21
           ansible_user: thein3rovert
+          enabled_roles:
+            - tailscale
+            - ping
+            - backup
+            - systemd
+            - prometheus
+            - kestra
         github-runner:
           ansible_host: 100.87.59.51
           ansible_user: root
+          enabled_roles:
+            - ping
+            - nix
+            - tailscale
+            - prometheus
         trikru:
           ansible_host: 192.168.0.102
           ansible_user: root
+          enabled_roles:
+            - tailscale
+            - ping
+            - backups
+            - prometheus
     # Kubernetes cluster
     k3s_server:
       hosts:
@@ -27,6 +67,11 @@ all:
           ansible_host: 100.85.190.19
           ansible_user: thein3rovert
           ansible_python_interpreter: /usr/bin/python3
+          enabled_roles:
+            - tailscale
+            - ping
+            - backups
+            - prometheus
     k3s_nodes:
       hosts:
         k3s-server:
@@ -37,7 +82,17 @@ all:
           ansible_host: 100.87.231.18
           ansible_user: root
           ansible_python_interpreter: /usr/bin/python3
+          enabled_roles:
+            - tailscale
+            - ping
+            - backups
+            - prometheus
         raven:
           ansible_host: 100.123.5.107
           ansible_user: root
           ansible_python_interpreter: /usr/bin/python3
+          enabled_roles:
+            - tailscale
+            - ping
+            - backups
+            - prometheus
