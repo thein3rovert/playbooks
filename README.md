@@ -120,6 +120,12 @@ See [inventory/README.md](inventory/README.md) for detailed inventory documentat
 - **Production**: bellamy, finn, trikru
 - **Development**: ubuntu-srv-01
 
+Production and development use separate inventory files. Within each file,
+every host has an `enabled_roles` list that controls which general roles run.
+Edit that list to match the host's operating system and purpose; a host can
+enable multiple roles without being defined more than once. Kubernetes cluster
+topology remains represented by the `k3s_server` and `k3s_nodes` groups.
+
 ## Available Roles
 
 ### Backup

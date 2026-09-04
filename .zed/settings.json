@@ -1,0 +1,16 @@
+{
+  "lsp": {
+    "yaml-language-server": {
+      "settings": {
+        "yaml": {
+          "schemas": {
+            "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/inventory.json": [
+              "inventory/*.yml",
+              "inventory/*.yaml"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - AI
 created_date: '2026-08-28 22:04'
-updated_date: '2026-08-28 22:07'
+updated_date: '2026-08-28 22:10'
 labels:
   - ansible
   - ssh
@@ -62,4 +62,6 @@ User requested keeping all Ansible standards fixes in one branch. Renamed the cu
 Implemented safe SSH hardening for supported imperative Linux platforms. The role validates required non-root user/key inputs, checks the SSH validator, creates the configured account and key with privilege escalation, verifies `authorized_keys` is populated, validates candidate SSH configuration with `sshd -t`, reloads through a platform-aware handler, resets the control connection, and verifies a fresh non-root connection. Added role safety documentation.
 
 Runtime research showed Bellamy is NixOS. Because imperative user and `/etc/ssh/sshd_config` edits conflict with NixOS declarative configuration, the role now explicitly skips unsupported platforms including NixOS. Bellamy check-mode verification passed with zero changes and reported the skip. Production/development syntax checks and `git diff --check` passed; development retains the existing unmatched K3s group warnings. A first/repeat runtime test of the hardening path still requires an approved supported Debian, Red Hat, or SUSE host with `ssh_pub_key` configured.
+
+User confirmed PLB-003 should remain In Progress because no supported test server is currently available. Implementation is committed, but acceptance criteria requiring first-run, new-connection, and repeat-run runtime evidence remain intentionally unchecked.
 <!-- SECTION:NOTES:END -->
