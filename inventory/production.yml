@@ -60,6 +60,13 @@ all:
             - ping
             - backups
             - prometheus
+        nightblood:
+          ansible_host: 192.168.0.105
+          ansible_user: root
+          enabled_roles:
+            - ping
+            - nfs-server
+            - tailscale
     # Kubernetes cluster
     k3s_server:
       hosts:
