@@ -1,0 +1,47 @@
+---
+- name: Install NFS server packages
+  ansible.builtin.apt:
+    name: nfs-kernel-server
+    state: present
+    update_cache: true
+
+- name: Read data-device filesystem metadata
+  ansible.builtin.command:
+    cmd: "blkid -o value -s TYPE {{ nfs_server_device }}"
+  register: nfs_server_blkid
+  changed_when: false
+  failed_when: nfs_server_blkid.rc not in [0, 2]
+
+- name: Format unformatted data device
+  community.general.filesystem:
+    dev: "{{ nfs_server_device }}"
+    fstype: "{{ nfs_server_filesystem }}"
+  when: nfs_server_blkid.stdout | trim == ""
+
+- name: Mount NFS data filesystem persistently
+  ansible.posix.mount:
+    path: "{{ nfs_server_mount_point }}"
+    src: "{{ nfs_server_device }}"
+    fstype: "{{ nfs_server_filesystem }}"
+    opts: defaults
+    state: mounted
+
+- name: Create NFS exports directory
+  ansible.builtin.file:
+    path: /etc/exports.d
+    state: directory
+    mode: "0755"
+
+- name: Configure NFS export
+  ansible.builtin.copy:
+    dest: /etc/exports.d/storage.exports
+    mode: "0644"
+    content: |
+      {{ nfs_server_mount_point }} {{ nfs_server_export_network }}({{ nfs_server_export_options }})
+  notify: Reload NFS exports
+
+- name: Enable and start NFS server
+  ansible.builtin.systemd:
+    name: nfs-kernel-server
+    enabled: true
+    state: started

@@ -1,0 +1,6 @@
+---
+nfs_server_device: /dev/sdb
+nfs_server_filesystem: ext4
+nfs_server_mount_point: /srv/nfs
+nfs_server_export_network: 192.168.0.0/24
+nfs_server_export_options: rw,sync,no_subtree_check,root_squash
